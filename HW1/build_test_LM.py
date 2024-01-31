@@ -6,7 +6,6 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 import re
-import nltk
 import sys
 import getopt
 
@@ -19,7 +18,67 @@ def build_LM(in_file):
     print("building language models...")
     # This is an empty method
     # Pls implement your code below
+    with open(in_file, 'r') as f:
+        data = f.readlines()
+    lm = {}
+    lm['indonesian'] = {}
+    lm['malaysian'] = {}
+    lm['tamil'] = {}
+    for s in data:
+        s = s[:-1]
+        sentence = s.split(' ')
+        language = sentence[0]
+        d = list(' '.join(sentence[1:]))
+        for i in range(len(d) - 3):
+            gram = tuple(d[i:(i+4)])
+            for lan in lm:
+                lm[lan][gram] = 1
+    for s in data:
+        s = s[:-1]
+        sentence = s.split(' ')
+        language = sentence[0]
+        d = list(' '.join(sentence[1:]))
+        for i in range(len(d) - 3):
+            gram = tuple(d[i:(i+4)])
+            lm[language][gram] += 1
+    count = {}
+    for lan in lm:
+        count[lan] = 0
+        for g in lm[lan]:
+            count[lan] += lm[lan][g]
+    for lan in lm:
+        for g in lm[lan]:
+            lm[lan][g] = lm[lan][g] / count[lan]
+    # for lan in lm:
+    #     print(len(lm[lan]))
+    #     sum = 0
+    #     for g in lm[lan]:
+    #         sum += lm[lan][g]
+    #     print(sum)
+    return lm
 
+def evaluate(sentence, LM):
+    s = list(sentence[:-1])
+    prediction = {}
+    prediction['indonesian'] = []
+    prediction['malaysian'] = []
+    prediction['tamil'] = []
+    for i in range(len(s) - 3):
+        gram = tuple(s[i:(i+4)])
+        for lan in LM:
+            if gram in LM[lan]:
+                prediction[lan].append(LM[lan][gram])
+    if len(prediction['indonesian']) == 0:
+        return 'other'
+    total = {}
+    total['indonesian'] = 1
+    total['malaysian'] = 1
+    total['tamil'] = 1
+    for lan in prediction:
+        for i in prediction[lan]:
+            total[lan] *= i
+    return max(list(total.items()), key=lambda x: x[1])[0]
+        
 
 def test_LM(in_file, out_file, LM):
     """
@@ -30,6 +89,14 @@ def test_LM(in_file, out_file, LM):
     print("testing language models...")
     # This is an empty method
     # Pls implement your code below
+    with open(in_file, 'r') as f:
+        data = f.readlines()
+    ans = []
+    for sentence in data:
+        pred = evaluate(sentence, LM) 
+        ans.append(pred + ' ' + sentence)
+    with open(out_file, 'w') as f_out:
+        f_out.writelines(ans)
 
 
 def usage():
