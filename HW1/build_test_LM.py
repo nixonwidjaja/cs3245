@@ -45,13 +45,6 @@ def build_LM(in_file):
             count += lm[lan][g]
         for g in lm[lan]:
             lm[lan][g] /= count
-    # for lan in lm:
-    #     print(lan)
-    #     print(len(lm[lan]))
-    #     sum = 0
-    #     for g in lm[lan]:
-    #         sum += lm[lan][g]
-    #     print(sum)
     return lm
 
 def evaluate(sentence, LM):
