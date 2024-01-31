@@ -5,10 +5,11 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
-import re
+import math
 import sys
 import getopt
 
+LANGUAGES = ['indonesian', 'malaysian', 'tamil']
 
 def build_LM(in_file):
     """
@@ -21,35 +22,31 @@ def build_LM(in_file):
     with open(in_file, 'r') as f:
         data = f.readlines()
     lm = {}
-    lm['indonesian'] = {}
-    lm['malaysian'] = {}
-    lm['tamil'] = {}
+    for lan in LANGUAGES:
+        lm[lan] = {}
     for s in data:
         s = s[:-1]
-        sentence = s.split(' ')
-        language = sentence[0]
-        d = list(' '.join(sentence[1:]))
+        language, sentence = s.split(' ', 1)
+        d = list(sentence)
         for i in range(len(d) - 3):
             gram = tuple(d[i:(i+4)])
             for lan in lm:
                 lm[lan][gram] = 1
     for s in data:
         s = s[:-1]
-        sentence = s.split(' ')
-        language = sentence[0]
-        d = list(' '.join(sentence[1:]))
+        language, sentence = s.split(' ', 1)
+        d = list(sentence)
         for i in range(len(d) - 3):
             gram = tuple(d[i:(i+4)])
             lm[language][gram] += 1
-    count = {}
     for lan in lm:
-        count[lan] = 0
+        count = 0
         for g in lm[lan]:
-            count[lan] += lm[lan][g]
-    for lan in lm:
+            count += lm[lan][g]
         for g in lm[lan]:
-            lm[lan][g] = lm[lan][g] / count[lan]
+            lm[lan][g] /= count
     # for lan in lm:
+    #     print(lan)
     #     print(len(lm[lan]))
     #     sum = 0
     #     for g in lm[lan]:
@@ -59,25 +56,23 @@ def build_LM(in_file):
 
 def evaluate(sentence, LM):
     s = list(sentence[:-1])
-    prediction = {}
-    prediction['indonesian'] = []
-    prediction['malaysian'] = []
-    prediction['tamil'] = []
+    miss = 0
+    count = 0
+    probability = {}
+    for lan in LANGUAGES:
+        probability[lan] = 0
     for i in range(len(s) - 3):
         gram = tuple(s[i:(i+4)])
         for lan in LM:
+            count += 1
             if gram in LM[lan]:
-                prediction[lan].append(LM[lan][gram])
-    if len(prediction['indonesian']) == 0:
+                probability[lan] += math.log(LM[lan][gram])
+            else:
+                miss += 1
+    if miss / count > 0.5:
         return 'other'
-    total = {}
-    total['indonesian'] = 1
-    total['malaysian'] = 1
-    total['tamil'] = 1
-    for lan in prediction:
-        for i in prediction[lan]:
-            total[lan] *= i
-    return max(list(total.items()), key=lambda x: x[1])[0]
+    language = max(list(probability.items()), key=lambda x: x[1])[0]
+    return language
         
 
 def test_LM(in_file, out_file, LM):
