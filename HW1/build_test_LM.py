@@ -19,51 +19,69 @@ def build_LM(in_file):
     print("building language models...")
     # This is an empty method
     # Pls implement your code below
+
+    # Open input file and data will be a list containing each line in the file as a list item
     with open(in_file, 'r') as f:
         data = f.readlines()
+    # Initialize LM (language model) with final format: {language: {(gram tuple): probability}}
     lm = {}
     for lan in LANGUAGES:
         lm[lan] = {}
-    for s in data:
-        s = s[:-1]
-        language, sentence = s.split(' ', 1)
-        d = list(sentence)
-        for i in range(len(d) - 3):
-            gram = tuple(d[i:(i+4)])
+    for line in data:
+        # Remove \n at the end of line
+        line = line[:-1]
+        # Split the first word (language name) and the rest of the sentence
+        language, sentence = line.split(' ', 1)
+        # Convert each character in the sentence into a separate element in a list
+        chars = list(sentence)
+        for i in range(len(chars) - 3):
+            # Define gram as a tuple of 4 characters obtained by sliding window
+            gram = tuple(chars[i:(i+4)])
+            # Add one smoothing: set the count of the gram = 1 for all languages
             for lan in lm:
-                lm[lan][gram] = 1
-    for s in data:
-        s = s[:-1]
-        language, sentence = s.split(' ', 1)
-        d = list(sentence)
-        for i in range(len(d) - 3):
-            gram = tuple(d[i:(i+4)])
+                if gram not in lm[lan]:
+                    lm[lan][gram] = 1
+            # Add the count for the gram to its respective language
             lm[language][gram] += 1
+    # Convert count into probability
     for lan in lm:
-        count = 0
+        # total_count represents the total count of all grams in a language
+        total_count = 0
         for g in lm[lan]:
-            count += lm[lan][g]
+            total_count += lm[lan][g]
+        # Divide each gram count with the language's total count
         for g in lm[lan]:
-            lm[lan][g] /= count
+            lm[lan][g] /= total_count
     return lm
 
 def evaluate(sentence, LM):
+    """
+    Helper function that returns the language prediction of a sentence based on a given LM.
+    """
+    # Remove \n at end of line and convert each character in the sentence into a separate element in a list
     s = list(sentence[:-1])
     miss = 0
     count = 0
+    # Initialize probability dict with final format: {language: probability}
     probability = {}
     for lan in LANGUAGES:
         probability[lan] = 0
     for i in range(len(s) - 3):
+        # Define gram as a tuple of 4 characters obtained by sliding window
         gram = tuple(s[i:(i+4)])
         for lan in LM:
+            # Count the total gram count of each sentence
             count += 1
+            # If the gram exists in given LM, add the log probability to its respective language in probability dict
             if gram in LM[lan]:
                 probability[lan] += math.log(LM[lan][gram])
+            # Else, ignore the gram but increment miss count as an indicator of alien language
             else:
                 miss += 1
+    # If there are more grams unrecognized in LM than otherwise, label as alien language
     if miss / count > 0.5:
         return 'other'
+    # Return the language that has the max probability out of all language options
     language = max(list(probability.items()), key=lambda x: x[1])[0]
     return language
         
@@ -79,10 +97,13 @@ def test_LM(in_file, out_file, LM):
     # Pls implement your code below
     with open(in_file, 'r') as f:
         data = f.readlines()
+    # Initialize the answer list
     ans = []
+    # For each sentence in test file, find the most probable language and append to answer list
     for sentence in data:
         pred = evaluate(sentence, LM) 
         ans.append(pred + ' ' + sentence)
+    # Write the answer into the output file
     with open(out_file, 'w') as f_out:
         f_out.writelines(ans)
 

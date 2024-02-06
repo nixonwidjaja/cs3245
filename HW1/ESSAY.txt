@@ -1,0 +1,26 @@
+1. Yes, because as a human, we identify a language from its words, not from its char grams.
+We can fool a LM by testing it we a sequence of popular char grams when in reality, the sentence
+does not make any valid words. We want our model to think as closely as possible as how humans 
+identify a language. Since words are the basic building blocks of languages and that's how
+languages are identified, I would expect word based grams to be better.
+
+2. The predicted language will be mostly Indonesian. This problem is prevalent in data science
+as data imbalance problem. Machine learning classification models that are fed with imbalanced 
+data (such as much more data in 1 category) will more likely to output that category since it
+has 'seen' more of that category and have not 'learn' much from other categories. I think this also 
+applies in this LM case.
+
+3. The model will more likely to perform better. Because by stripping punctuations, numbers, 
+and changing all to lower case, the model can capture the 'essence' of each language better, i.e.,
+learn which grams are unique to each language. For example, if the training data of one language
+only contain "Asdf?" it cannot detect "asdf" in the test data, where it should have been classified
+to be that particular language due to not stripping the punctuations and do case folding, which are
+not essential in determining whether a gram belongs to a language.
+
+4. I think whether the gram contains characters or words, there is an optimal n-gram to use that
+results in the highest accuracy. This problem is more like underfitting and overfitting. If we use 
+unigrams, 1 char or 1 word is not good enough to classify languages because there may be many languages
+that use the same char or word. If we use too many n-grams, it may result in overfitting because many 
+people (data) may say (contain) the same phrases over and over again, but rarely the same exact sentence, 
+which is why  it is also not optimal to use 10-grams or 100-grams. + complexity skyrocketed in this case.
+I think the optimal n-grams for words are (2-5)-grams.
