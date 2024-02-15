@@ -1,0 +1,69 @@
+american AND NOT american
+american
+american AND analyst
+american AND assess
+american AND NOT assess
+american OR analyst
+american OR NOT analyst
+american AND analyst AND assess
+(american OR analyst) AND NOT assess
+(american AND NOT assess) OR analyst
+american AND NOT (assess OR analyst)
+(american AND analyst) OR (american AND assess)
+american AND U.S.A
+employee AND company AND PROFIT
+profit AND loss
+loss AND NOT profit
+loss
+profitsssssss AND lossssssssss
+profit AND loss
+marketing AND expense
+marketing AND expensesssssss
+revenue AND sales
+revenuesssss AND salesssssss
+meet AND quota
+meet AND quotassssssss
+pickypiky
+bombbaby
+buttcrack
+bunny balls
+pillow fight
+uglycoat
+wet tissue
+spinkyspanky
+aprilskin
+sumikko AND gurashi
+eureka
+CS2040
+CS3245
+CS2010
+CS1010E
+CS1010
+POWERPOINT
+DR
+BELMEUR
+metal
+shouting AND china AND singaporean AND indiannnnnnn
+pink AND fountain
+tehc
+kopic
+onitsuka
+y.c.
+csa
+govtech AND csa AND asit AND mindef AND NUS AND NTU
+govtech AND csa AND asit AND NOT mindef AND NUS AND NTU
+govtech AND csa AND asit AND mindef AND (NUS OR NTU)
+govtech AND csa AND asit AND mindef AND (NUS AND NTU) OR SMU
+govtech AND csa AND asit AND mindef AND (NUS AND NTU) OR NOT SMU
+none AND exist AND okay AND coordinator
+CS1010 AND CS3245 AND CS2040
+pre AND post AND conditions
+sorting AND linkedlist AND tree AND graph
+team AND onitsuka AND y.c. AND CS3245 AND sanity AND process
+team AND (onitsuka OR y.c.) AND CS3245 AND (sanity AND process)
+team AND (onitsuka OR y.c.) AND CS3245 AND (sanity AND NOT processsssss)
+team AND onitsuka AND y.c. AND CS3245 AND sanity AND processsssss
+team AND onitsuka AND y.c. AND CS3245 OR sanity AND processsssss
+team AND onitsuka AND y.c. AND NOT CS3245 OR sanity OR processsssss
+team AND onitsuka AND y.c. OR (CS3245 AND sanity AND processsssss)
+team AND onitsuka AND y.c. AND CS3245 AND NOT sanity AND processsssss
