@@ -4,7 +4,6 @@ import math
 import nltk
 import os
 import pickle
-import re
 import sys
 
 
