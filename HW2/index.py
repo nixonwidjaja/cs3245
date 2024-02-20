@@ -57,7 +57,10 @@ class Indexer:
             self.dictionary[s].finalize()
         with open(self.out_dict, "wb") as f:
             pickle.dump(self.dictionary, f)
-        with open(self.out_dict, "rb") as f:
+
+    @classmethod
+    def load(self, file: str):
+        with open(file, "rb") as f:
             print(pickle.load(f))
 
 
@@ -74,6 +77,7 @@ def build_index(in_dir, out_dict, out_postings):
         for file in files:
             indexer.index(os.path.join(in_dir, file), int(file))
     indexer.finalize()
+    Indexer.load(out_dict)
 
 
 input_directory = output_file_dictionary = output_file_postings = None
