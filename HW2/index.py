@@ -37,10 +37,12 @@ class PostingsList:
 
 
 class Indexer:
-    def __init__(self, out_dict) -> None:
+    def __init__(self, out_dict, out_postings) -> None:
         self.stemmer = nltk.stem.PorterStemmer()
         self.dictionary = {}
+        self.word_to_pointer_dict = {}
         self.out_dict = out_dict
+        self.out_postings = out_postings
 
     def index(self, file: str, doc_id: int):
         with open(file, "r") as f:
@@ -55,13 +57,32 @@ class Indexer:
     def finalize(self):
         for s in self.dictionary:
             self.dictionary[s].finalize()
+        with open(self.out_postings, "wb"):
+            pass
+        with open(self.out_postings, "ab") as f:
+            for word, pl in self.dictionary.items():
+                pointer = f.tell()
+                data = pickle.dumps(pl)
+                f.write(data)
+                self.word_to_pointer_dict[word] = (pointer, len(data))
         with open(self.out_dict, "wb") as f:
-            pickle.dump(self.dictionary, f)
+            pickle.dump(self.word_to_pointer_dict, f)
 
-    @classmethod
-    def load(self, file: str):
-        with open(file, "rb") as f:
-            print(pickle.load(f))
+    def load(self):
+        with open(self.out_dict, "rb") as f:
+            self.word_to_pointer_dict = pickle.load(f)
+
+    def get_posting_list(self, word: str):
+        if len(self.word_to_pointer_dict) == 0:
+            self.load()
+        word = self.stemmer.stem(word.lower(), to_lowercase=True)
+        with open(self.out_postings, "rb") as f:
+            if word not in self.word_to_pointer_dict:
+                return []
+            pointer, length = self.word_to_pointer_dict[word]
+            f.seek(pointer)
+            data = f.read(length)
+        return pickle.loads(data)
 
 
 def build_index(in_dir, out_dict, out_postings):
@@ -72,12 +93,19 @@ def build_index(in_dir, out_dict, out_postings):
     print("indexing...")
     # This is an empty method
     # Pls implement your code in below
-    indexer = Indexer(out_dict)
+    indexer = Indexer(out_dict, out_postings)
     for _, _, files in os.walk(in_dir):
         for file in files:
             indexer.index(os.path.join(in_dir, file), int(file))
     indexer.finalize()
-    Indexer.load(out_dict)
+
+
+def test_get_posting_lists(out_dict, out_postings):
+    print("test get posting lists...")
+    indexer = Indexer(out_dict, out_postings)
+    for word in ["billion", "u.s.", "dollar", "week", ",", "mln"]:
+        print(word)
+        print(indexer.get_posting_list(word))
 
 
 input_directory = output_file_dictionary = output_file_postings = None
@@ -116,4 +144,5 @@ if (
     sys.exit(2)
 
 build_index(input_directory, output_file_dictionary, output_file_postings)
+test_get_posting_lists(output_file_dictionary, output_file_postings)
 # python3 index.py -i ./reuters/small-training -d dictionary.txt -p postings.txt
