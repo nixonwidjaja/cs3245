@@ -35,6 +35,12 @@ class PostingsList:
             if i + step < len(self.plist):
                 self.plist[i].skip = i + step
 
+    def merge(self, other):
+        self.plist = [i.value if isinstance(i, Posting) else i for i in self.plist]
+        other = [i.value if isinstance(i, Posting) else i for i in other]
+        self.plist.extend(other)
+        self.finalize()
+
 
 class Indexer:
     def __init__(self, out_dict, out_postings) -> None:
