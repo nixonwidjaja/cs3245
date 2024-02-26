@@ -1,4 +1,6 @@
 #!/usr/bin/python3
+
+from dataclasses import dataclass
 import getopt
 import math
 import nltk
@@ -11,9 +13,30 @@ class Posting:
     def __init__(self, value) -> None:
         self.value = value
         self.skip = None
+        
+    def __lt__(self, other):
+        return self.value < other.value
+    
+    def __le__(self, other):
+        return self.value <= other.value
+    
+    def __gt__(self, other):
+        return self.value <= other.value
+    
+    def __ge__(self, other):
+        return self.value >= other.value
+    
+    def __eq__(self, other):
+        return self.value == other.value
+    
+    def __ne__(self, other):
+        return self.value != other.value
 
     def __repr__(self):
         return f"(value = {self.value} skip = {self.skip})"
+    
+    def has_skip(self):
+        return self.skip is not None
 
 
 class PostingsList:
@@ -23,23 +46,33 @@ class PostingsList:
     def __repr__(self):
         return str(self.plist)
 
-    def append(self, value):
+    def append(self, value: Posting):
         self.plist.append(value)
 
     def finalize(self):
-        self.plist = sorted(list(set(self.plist)))
+        self.plist = list(sorted(list(set(self.plist)), key=lambda p: p.value))
         skips = round(math.sqrt(len(self.plist)))
         step = len(self.plist) // skips
-        self.plist = [Posting(val) for val in self.plist]
         for i in range(0, len(self.plist), step):
             if i + step < len(self.plist):
                 self.plist[i].skip = i + step
 
-    def merge(self, other):
-        self.plist = [i.value if isinstance(i, Posting) else i for i in self.plist]
-        other = [i.value if isinstance(i, Posting) else i for i in other]
+    def merge(self, other: "PostingsList"):
         self.plist.extend(other)
         self.finalize()
+        
+    def __len__(self):
+        return len(self.plist)
+
+
+@dataclass
+class WordToPointerEntry:
+    # Where in the file, the posting list begins
+    pointer: int
+    # How many additional bytes to read
+    pointer_offset: int
+    # How many items in the posting list
+    size: int
 
 
 class Indexer:
@@ -58,19 +91,17 @@ class Indexer:
         for s in singles:
             if s not in self.dictionary:
                 self.dictionary[s] = PostingsList()
-            self.dictionary[s].append(doc_id)
+            self.dictionary[s].append(Posting(value=doc_id))
 
     def finalize(self):
         for s in self.dictionary:
             self.dictionary[s].finalize()
-        with open(self.out_postings, "wb"):
-            pass
-        with open(self.out_postings, "ab") as f:
+        with open(self.out_postings, "wb") as f:
             for word, pl in self.dictionary.items():
                 pointer = f.tell()
                 data = pickle.dumps(pl)
                 f.write(data)
-                self.word_to_pointer_dict[word] = (pointer, len(data))
+                self.word_to_pointer_dict[word] = WordToPointerEntry(pointer, len(data), len(pl))
         with open(self.out_dict, "wb") as f:
             pickle.dump(self.word_to_pointer_dict, f)
 
@@ -85,9 +116,9 @@ class Indexer:
         with open(self.out_postings, "rb") as f:
             if word not in self.word_to_pointer_dict:
                 return []
-            pointer, length = self.word_to_pointer_dict[word]
-            f.seek(pointer)
-            data = f.read(length)
+            entry = self.word_to_pointer_dict[word]
+            f.seek(entry.pointer)
+            data = f.read(entry.pointer_offset)
         return pickle.loads(data)
 
 
@@ -111,10 +142,11 @@ def test_get_posting_lists(out_dict, out_postings):
     indexer = Indexer(out_dict, out_postings)
     for word in ["billion", "u.s.", "dollar", "week", ",", "mln"]:
         print(word)
-        print(indexer.get_posting_list(word))
+        print(type(indexer.get_posting_list(word)))
+        print(indexer.word_to_pointer_dict[word])
+        break
 
 
-input_directory = output_file_dictionary = output_file_postings = None
 
 
 def usage():
@@ -125,30 +157,32 @@ def usage():
     )
 
 
-try:
-    opts, args = getopt.getopt(sys.argv[1:], "i:d:p:")
-except getopt.GetoptError:
-    usage()
-    sys.exit(2)
+if __name__ == "__main__":
+    input_directory = output_file_dictionary = output_file_postings = None
+    try:
+        opts, args = getopt.getopt(sys.argv[1:], "i:d:p:")
+    except getopt.GetoptError:
+        usage()
+        sys.exit(2)
 
-for o, a in opts:
-    if o == "-i":  # input directory
-        input_directory = a
-    elif o == "-d":  # dictionary file
-        output_file_dictionary = a
-    elif o == "-p":  # postings file
-        output_file_postings = a
-    else:
-        assert False, "unhandled option"
+    for o, a in opts:
+        if o == "-i":  # input directory
+            input_directory = a
+        elif o == "-d":  # dictionary file
+            output_file_dictionary = a
+        elif o == "-p":  # postings file
+            output_file_postings = a
+        else:
+            assert False, "unhandled option"
 
-if (
-    input_directory == None
-    or output_file_postings == None
-    or output_file_dictionary == None
-):
-    usage()
-    sys.exit(2)
+    if (
+        input_directory == None
+        or output_file_postings == None
+        or output_file_dictionary == None
+    ):
+        usage()
+        sys.exit(2)
 
-build_index(input_directory, output_file_dictionary, output_file_postings)
-test_get_posting_lists(output_file_dictionary, output_file_postings)
-# python3 index.py -i ./reuters/small-training -d dictionary.txt -p postings.txt
+    # build_index(input_directory, output_file_dictionary, output_file_postings)
+    test_get_posting_lists(output_file_dictionary, output_file_postings)
+    # python3 index.py -i ./reuters/small-training -d dictionary.txt -p postings.txt

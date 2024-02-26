@@ -1,0 +1,1 @@
+python search.py -d ./dictionary.txt -p ./postings.txt -q ./sanity-queries.txt -o output.txt

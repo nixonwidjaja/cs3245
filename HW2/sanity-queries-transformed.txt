@@ -1,0 +1,138 @@
+american AND NOT american
+[self.AND='american' NOT self.NOT='american']
+american
+['american']
+american AND analyst
+[AND [ ['analyst', 'american'] ] ]
+american AND assess
+[AND [ ['assess', 'american'] ] ]
+american AND NOT assess
+[self.AND='american' NOT self.NOT='assess']
+american OR analyst
+[OR [ ['analyst', 'american'] ] ]
+american OR NOT analyst
+['american', OR [ ['NOT', 'analyst'] ] ]
+american AND analyst AND assess
+[AND [ ['assess', 'analyst', 'american'] ] ]
+(american OR analyst) AND NOT assess
+[self.AND=OR [ ['analyst', 'american'] ]  NOT self.NOT='assess']
+(american AND NOT assess) OR analyst
+[OR [ ['analyst', self.AND='american' NOT self.NOT='assess'] ] ]
+american AND NOT (assess OR analyst)
+[self.AND='american' NOT self.NOT=OR [ ['analyst', 'assess'] ] ]
+(american AND analyst) OR (american AND assess)
+[OR [ [AND [ ['assess', 'american'] ] , AND [ ['analyst', 'american'] ] ] ] ]
+american AND U.S.A
+[AND [ ['U.S.A', 'american'] ] ]
+employee AND company AND PROFIT
+[AND [ ['PROFIT', 'company', 'employee'] ] ]
+profit AND loss
+[AND [ ['loss', 'profit'] ] ]
+loss AND NOT profit
+[self.AND='loss' NOT self.NOT='profit']
+loss
+['loss']
+profitsssssss AND lossssssssss
+[AND [ ['lossssssssss', 'profitsssssss'] ] ]
+profit AND loss
+[AND [ ['loss', 'profit'] ] ]
+marketing AND expense
+[AND [ ['expense', 'marketing'] ] ]
+marketing AND expensesssssss
+[AND [ ['expensesssssss', 'marketing'] ] ]
+revenue AND sales
+[AND [ ['sales', 'revenue'] ] ]
+revenuesssss AND salesssssss
+[AND [ ['salesssssss', 'revenuesssss'] ] ]
+meet AND quota
+[AND [ ['quota', 'meet'] ] ]
+meet AND quotassssssss
+[AND [ ['quotassssssss', 'meet'] ] ]
+pickypiky
+['pickypiky']
+bombbaby
+['bombbaby']
+buttcrack
+['buttcrack']
+bunny balls
+['bunny', 'balls']
+pillow fight
+['pillow', 'fight']
+uglycoat
+['uglycoat']
+wet tissue
+['wet', 'tissue']
+spinkyspanky
+['spinkyspanky']
+aprilskin
+['aprilskin']
+sumikko AND gurashi
+[AND [ ['gurashi', 'sumikko'] ] ]
+eureka
+['eureka']
+CS2040
+['CS2040']
+CS3245
+['CS3245']
+CS2010
+['CS2010']
+CS1010E
+['CS1010E']
+CS1010
+['CS1010']
+POWERPOINT
+['POWERPOINT']
+DR
+['DR']
+BELMEUR
+['BELMEUR']
+metal
+['metal']
+shouting AND china AND singaporean AND indiannnnnnn
+[AND [ ['indiannnnnnn', 'singaporean', 'china', 'shouting'] ] ]
+pink AND fountain
+[AND [ ['fountain', 'pink'] ] ]
+tehc
+['tehc']
+kopic
+['kopic']
+onitsuka
+['onitsuka']
+y.c.
+['y.c.']
+csa
+['csa']
+govtech AND csa AND asit AND mindef AND NUS AND NTU
+[AND [ ['NTU', 'NUS', 'mindef', 'asit', 'csa', 'govtech'] ] ]
+govtech AND csa AND asit AND NOT mindef AND NUS AND NTU
+[AND [ ['NTU', 'NUS', AND [ [self.AND='asit' NOT self.NOT='mindef', 'csa', 'govtech'] ] ] ] ]
+govtech AND csa AND asit AND mindef AND (NUS OR NTU)
+[AND [ [OR [ ['NTU', 'NUS'] ] , 'mindef', 'asit', 'csa', 'govtech'] ] ]
+govtech AND csa AND asit AND mindef AND (NUS AND NTU) OR SMU
+[OR [ ['SMU', AND [ ['NTU', 'NUS', 'mindef', 'asit', 'csa', 'govtech'] ] ] ] ]
+govtech AND csa AND asit AND mindef AND (NUS AND NTU) OR NOT SMU
+[AND [ ['NTU', 'NUS', 'mindef', 'asit', 'csa', 'govtech'] ] , OR [ ['NOT', 'SMU'] ] ]
+none AND exist AND okay AND coordinator
+[AND [ ['coordinator', 'okay', 'exist', 'none'] ] ]
+CS1010 AND CS3245 AND CS2040
+[AND [ ['CS2040', 'CS3245', 'CS1010'] ] ]
+pre AND post AND conditions
+[AND [ ['conditions', 'post', 'pre'] ] ]
+sorting AND linkedlist AND tree AND graph
+[AND [ ['graph', 'tree', 'linkedlist', 'sorting'] ] ]
+team AND onitsuka AND y.c. AND CS3245 AND sanity AND process
+[AND [ ['process', 'sanity', 'CS3245', 'y.c.', 'onitsuka', 'team'] ] ]
+team AND (onitsuka OR y.c.) AND CS3245 AND (sanity AND process)
+[AND [ ['process', 'sanity', 'CS3245', OR [ ['y.c.', 'onitsuka'] ] , 'team'] ] ]
+team AND (onitsuka OR y.c.) AND CS3245 AND (sanity AND NOT processsssss)
+[AND [ [self.AND='sanity' NOT self.NOT='processsssss', 'CS3245', OR [ ['y.c.', 'onitsuka'] ] , 'team'] ] ]
+team AND onitsuka AND y.c. AND CS3245 AND sanity AND processsssss
+[AND [ ['processsssss', 'sanity', 'CS3245', 'y.c.', 'onitsuka', 'team'] ] ]
+team AND onitsuka AND y.c. AND CS3245 OR sanity AND processsssss
+[OR [ [AND [ ['processsssss', 'sanity'] ] , AND [ ['CS3245', 'y.c.', 'onitsuka', 'team'] ] ] ] ]
+team AND onitsuka AND y.c. AND NOT CS3245 OR sanity OR processsssss
+[OR [ ['processsssss', 'sanity', AND [ [self.AND='y.c.' NOT self.NOT='CS3245', 'onitsuka', 'team'] ] ] ] ]
+team AND onitsuka AND y.c. OR (CS3245 AND sanity AND processsssss)
+[OR [ [AND [ ['processsssss', 'sanity', 'CS3245'] ] , AND [ ['y.c.', 'onitsuka', 'team'] ] ] ] ]
+team AND onitsuka AND y.c. AND CS3245 AND NOT sanity AND processsssss
+[AND [ ['processsssss', AND [ [self.AND='CS3245' NOT self.NOT='sanity', 'y.c.', 'onitsuka', 'team'] ] ] ] ]
