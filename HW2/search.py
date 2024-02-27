@@ -1,6 +1,11 @@
 #!/usr/bin/python3
-from index import Indexer, Posting, PostingsList
+from index import Indexer, UNIVERSE
+# These imports are necessary for Pickle.load
+# Python needs to know what classes are being deserialized into so we need
+# to load the classes into memory for Pickle to work
+from index import WordToPointerEntry, PostingsList, Posting
 
+import math
 import re
 import nltk
 import sys
@@ -83,7 +88,6 @@ def split(q):
             curr_token = curr_token + " " + token
     if curr_token != "":
         new_tokens.append(curr_token)
-    print(str(new_tokens))
     return new_tokens
     
     
@@ -145,12 +149,9 @@ def optimize_ast(query):
     print("Optimizing " + str(query))
     operand_stack = []
     for token in query:
-        print(operand_stack)
         if token in ["AND", "OR", "AND NOT"]:
             s1 = operand_stack.pop()
             s2 = operand_stack.pop()
-            print(s1)
-            print(s2)
             if token == "AND":
                 if isinstance(s1, AND):
                     operand_stack.append(s1.add(s2))
@@ -176,26 +177,46 @@ def optimize_ast(query):
 
 def parse_query(query):
     """Given a boolean query, convert it into an optimized ast"""
-    # return shunting(split(query))
-    return optimize_ast(shunting(split(query)))
+    return shunting(split(query))
+    # return optimize_ast(shunting(split(query)))
 
 """
 BOOLEAN OPERATORS
 """
 
-def apply_and(indexer: Indexer, term1: str, term2: str) -> list[str]:
+def reapply_skip_pointers(pl: PostingsList) -> PostingsList:
+    """
+    When merging two posting lists, their old skip pointers will
+    no longer be valid as it is possible we take a posting from one
+    posting list that points to an invalid index!
+    We will apply a linear time reapplication of the skip pointers.
+    There is no need to sort because we did our intersection in ascending order
+    anyways.
+    """
+    for p in pl:
+        p.skip = None
+    skips = round(math.sqrt(len(pl)))
+    if skips == 0:
+        return pl
+    step = len(pl) // skips
+    for i in range(0, len(pl), step):
+        if i + step < len(pl):
+            pl[i].skip = i + step
+    return pl
+        
+    
+
+def apply_and(pl1: PostingsList, pl2: PostingsList) -> list[str]:
     """
     Apply the AND operation on term 1 and term 2 using low level operations.
     We assume that the posting list file for both term exists.
     Make use of skip pointers whenever possible
     """
-    pl1: PostingsList = indexer.get_posting_list(term1)
-    pl2: PostingsList = indexer.get_posting_list(term2)
     p1 = p2 = 0  # Pointers to each posting list
     results = []
     while p1 < len(pl1) and p2 < len(pl2):
         if pl1[p1] == pl2[p2]:
-            results.append(pl1[p1].value)
+            results.append(pl1[p1])
             p1 += 1
             p2 += 1
         elif pl1[p1] < pl2[p2]:
@@ -220,49 +241,45 @@ def apply_and(indexer: Indexer, term1: str, term2: str) -> list[str]:
     return results
 
 
-def apply_or(indexer: Indexer, term1: str, term2: str) -> list[str]:
+def apply_or(pl1: PostingsList, pl2: PostingsList) -> list[str]:
     """
     Apply the OR operation on term 1 and term 2 using low level operations.
     We assume that the posting list file for both term exists.
     Skip pointers are useless for or
     """
-    pl1: PostingsList = indexer.get_posting_list(term1)
-    pl2: PostingsList = indexer.get_posting_list(term2)
     p1 = p2 = 0  # Pointers to each posting list
     results = []
     while p1 < len(pl1) and p2 < len(pl2):
         if pl1[p1] == pl2[p2]:
-            results.append(pl1[p1].value)
+            results.append(pl1[p1])
             p1 += 1
             p2 += 1
-        elif pl1[1] < pl2[p2]:
-            results.append(pl1[p1].value)
+        elif pl1[p1] < pl2[p2]:
+            results.append(pl1[p1])
             p1 += 1
         else:
-            results.append(pl2[p2].value)
+            results.append(pl2[p2])
             p2 += 1
     while p1 < len(pl1):
-        results.append(pl1[p1].value)
+        results.append(pl1[p1])
         p1 += 1
     while p2 < len(pl2):
-        results.append(pl2[p2].value)
+        results.append(pl2[p2])
         p2 += 1
     return results
 
 
-def apply_and_not(indexer: Indexer, term1: str, term2: str) -> list[str]:
+def apply_and_not(pl1: PostingsList, pl2: PostingsList) -> list[str]:
     """
     Apply the term1 AND NOT term2
     term1: 1 2 3 4 5
     term2: 2 3 
     """
-    pl1: PostingsList = indexer.get_posting_list(term1)
-    pl2: PostingsList = indexer.get_posting_list(term2)
     p1 = p2 = 0  # Pointers to each posting list
     results = []
     while p1 < len(pl1) and p2 < len(pl2):
         if pl1[p1] < pl2[p2]:
-            results.append(pl1[p1].value)
+            results.append(pl1[p1])
             p1 += 1
         elif pl1[p1] == pl2[p2]:
             p1 += 1
@@ -276,8 +293,64 @@ def apply_and_not(indexer: Indexer, term1: str, term2: str) -> list[str]:
             else:
                 p2 += 1
     while p1 < len(pl1):
-        results.append(pl1[p1].value)
+        results.append(pl1[p1])
         p1 += 1
+    return results
+
+
+def apply_not(pl: PostingsList, universe: PostingsList) -> list[str]:
+    """Get all terms in universe AND NOT pl"""
+    return apply_and_not(universe, pl)
+
+
+"""
+Evaluation methods
+"""
+def naive_evaluation(indexer: Indexer, query: list[str]):
+    """
+    The most baseline evaluation that operates according to Shunting.
+    This is thus therefore highly likely to be correct.
+    """
+    def get_posting_list(term):
+        if isinstance(term, list):
+            return term
+        elif isinstance(term, str):
+            return indexer.get_posting_list(term)
+        else:
+            raise ValueError("Invalid term")
+    operand_stack = []
+    for token in query:
+        if token in ["AND", "OR", "AND NOT"]:
+            s1 = operand_stack.pop()
+            pl1 = get_posting_list(s1)
+            
+            s2 = operand_stack.pop()
+            pl2 = get_posting_list(s2)
+            
+            if token == "AND":
+                results = apply_and(pl1, pl2)
+            elif token == "OR":
+                results = apply_or(pl1, pl2)
+            else:  #token == "AND NOT":
+                # Note the swap on pl1 and pl2
+                # The term at the top of the stack is the one that should be negated
+                results = apply_and_not(pl2, pl1)
+            results = reapply_skip_pointers(results)
+            operand_stack.append(results)
+        elif token in ["NOT"]:
+            s = operand_stack.pop()
+            pl = get_posting_list(s)
+            universe = indexer.get_posting_list(UNIVERSE)
+            results = apply_and_not(universe, pl)
+            results = reapply_skip_pointers(results)
+            operand_stack.append(results)
+        else:
+            operand_stack.append(token)
+    assert len(operand_stack) == 1
+    # Handle the unary case which has no optimisation possible
+    if isinstance(operand_stack[0], str):
+        operand_stack = [indexer.get_posting_list(operand_stack[0])]
+    results = " ".join([str(posting.value) for posting in operand_stack[0]])
     return results
 
 
@@ -287,21 +360,38 @@ def run_search(dict_file, postings_file, queries_file, results_file):
     perform searching on the given queries file and output the results to a file
     """
     print('running search on the queries...')
-    q = "bill OR Gates AND (vista OR XP) AND NOT mac"
-    print(parse_query(q))
+    # q = "bill OR Gates AND (vista OR XP) AND NOT mac"
+    # print(parse_query(q))
     # # We cannot read the whole posting files into memory
-    # indexer = Indexer(dict_file, postings_file)
-    # with open(results_file, "w") as outf, open(queries_file, "r") as inf:
-    #     query_no = 0
-    #     # Process each query and write to file
-    #     while True:
-    #         query = inf.readline()
-    #         query = query.strip()
-    #         if not query:
-    #             break
-    #         print("Original query is " + query)
-    #         query = parse_query(query)
-    #         print("New query is " + str(query))
+    # query = "american OR analyst"
+    indexer = Indexer(dict_file, postings_file)
+    # with open("lala.txt", "w") as outf:
+        # query = indexer.preprocess_text(query)
+    # with open("american.txt", "w") as outf:
+    #     pl = indexer.get_posting_list("american")
+    #     outf.write(str(pl))
+    # with open("analyst.txt", "w") as outf:
+    #     pl = indexer.get_posting_list("analyst")
+    #     outf.write(str(pl))
+    # query = " ".join(indexer.preprocess_text(query))
+    # query = parse_query(query)
+    # results = naive_evaluation(indexer, query)
+    # print(results)
+    with open(results_file, "w") as outf, open(queries_file, "r") as inf:
+        # Process each query and write to file
+        num_queries = 0
+        while True:
+            query = inf.readline().strip()
+            print("OG Query is : " + query)
+            # query = " ".join(indexer.preprocess_text(query))
+            if not query:
+                break
+            print(query)
+            query = parse_query(query)
+            results = naive_evaluation(indexer, query)
+            outf.write(results + "\n")
+            num_queries += 1
+        print(f"Handled {num_queries} queries")
 
 dictionary_file = postings_file = file_of_queries = output_file_of_results = None
 
@@ -309,7 +399,7 @@ try:
     opts, args = getopt.getopt(sys.argv[1:], 'd:p:q:o:')
 except getopt.GetoptError:
     usage()
-    sys.exit(2)
+    sys.exit(   2)
 
 for o, a in opts:
     if o == '-d':

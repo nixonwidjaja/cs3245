@@ -37,6 +37,9 @@ class Posting:
     
     def has_skip(self):
         return self.skip is not None
+    
+    def __hash__(self):
+        return hash(self.value)
 
 
 class PostingsList:
@@ -63,6 +66,20 @@ class PostingsList:
         
     def __len__(self):
         return len(self.plist)
+    
+    def __iter__(self):
+        self.i = 0
+        return self
+    
+    def __next__(self):
+        if self.i >= len(self):
+            raise StopIteration
+        x = self.plist[self.i]
+        self.i += 1
+        return x
+    
+    def __getitem__(self, i):
+        return self.plist[i]
 
 
 @dataclass
@@ -73,6 +90,15 @@ class WordToPointerEntry:
     pointer_offset: int
     # How many items in the posting list
     size: int
+    
+    def __getstate__(self):
+        return self.__dict__
+
+    def __setstate__(self, d):
+        self.__dict__ = d
+
+# The term used to represent the list of all doc ids
+UNIVERSE = ""
 
 
 class Indexer:
@@ -82,16 +108,29 @@ class Indexer:
         self.word_to_pointer_dict = {}
         self.out_dict = out_dict
         self.out_postings = out_postings
+        self.dictionary[UNIVERSE] = PostingsList()
+        
+    def preprocess_text(self, text: str) -> list[str]:
+        """
+        Preprocessing done for indexing as well as searching.
+        Move to own static method to standardize across.
+        """
+        text = text.lower()
+        words = nltk.word_tokenize(text)
+        singles = [self.stemmer.stem(w, to_lowercase=True) for w in words]
+        return singles
+        
 
     def index(self, file: str, doc_id: int):
         with open(file, "r") as f:
             text = f.read().lower()
-        words = nltk.word_tokenize(text)
-        singles = set([self.stemmer.stem(w, to_lowercase=True) for w in words])
+        singles = set(self.preprocess_text(text))
         for s in singles:
             if s not in self.dictionary:
                 self.dictionary[s] = PostingsList()
             self.dictionary[s].append(Posting(value=doc_id))
+        # Add the doc id to the UNIVERSE to maintain list of all docs
+        self.dictionary[UNIVERSE].append(Posting(value=doc_id))
 
     def finalize(self):
         for s in self.dictionary:
@@ -140,11 +179,12 @@ def build_index(in_dir, out_dict, out_postings):
 def test_get_posting_lists(out_dict, out_postings):
     print("test get posting lists...")
     indexer = Indexer(out_dict, out_postings)
-    for word in ["billion", "u.s.", "dollar", "week", ",", "mln"]:
-        print(word)
-        print(type(indexer.get_posting_list(word)))
-        print(indexer.word_to_pointer_dict[word])
-        break
+    print(indexer.get_posting_list(""))
+    # for word in ["billion", "u.s.", "dollar", "week", ",", "mln"]:
+    #     print(word)
+    #     print(type(indexer.get_posting_list(word)))
+    #     print(indexer.word_to_pointer_dict[word])
+    #     break
 
 
 
@@ -183,6 +223,6 @@ if __name__ == "__main__":
         usage()
         sys.exit(2)
 
-    # build_index(input_directory, output_file_dictionary, output_file_postings)
-    test_get_posting_lists(output_file_dictionary, output_file_postings)
+    build_index(input_directory, output_file_dictionary, output_file_postings)
+    # test_get_posting_lists(output_file_dictionary, output_file_postings)
     # python3 index.py -i ./reuters/small-training -d dictionary.txt -p postings.txt
