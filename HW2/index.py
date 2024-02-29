@@ -115,10 +115,12 @@ class Indexer:
         self.out_dict = out_dict
         self.out_postings = out_postings
         self.universe = PostingsList()
-        if os.path.exists(out_dict):
-            os.remove(out_dict)
-        if os.path.exists(out_postings):
-            os.remove(out_postings)
+        # You should not be doing this here, else we can't use the Indexer
+        # Maybe make another method
+        # if os.path.exists(out_dict):
+        #     os.remove(out_dict)
+        # if os.path.exists(out_postings):
+        #     os.remove(out_postings)
 
     def get_memory_size(self):
         return sys.getsizeof(self.dictionary)
