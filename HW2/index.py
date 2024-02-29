@@ -133,7 +133,8 @@ class DocumentStreamToken:
 def tokenize_document(docId, path, processing_fn):
     with open(path, "r") as inf:
         text = inf.read()
-        text = processing_fn(text)
+        # convenient list set hax
+        text = list(set(processing_fn(text)))
         for token in text:
             yield DocumentStreamToken(token, docId)
             
@@ -148,11 +149,12 @@ def tokenize_collection(dir, processing_fn):
 
 
 class Indexer:
-    def __init__(self, out_dict, out_postings, block_dir="block", block_size=1024) -> None:
+    def __init__(self, out_dict, out_postings, block_dir="block", block_size=500000) -> None:
         """
         The posting files contains the serialized version of the posting lists.
         The dictionary file contains a serialized version of the term to pointer in the postings list.
         When we run SPIMI, we will create a block file of each term to list of docIds.
+        Default to 0.5MB for the block size
         """
         self.stemmer = nltk.stem.PorterStemmer()
         self.dictionary = {}
@@ -261,7 +263,6 @@ class Indexer:
         Preprocessing done for indexing as well as searching.
         Move to own static method to standardize across.
         """
-        print("Text is " + text)
         text = text.lower()
         words = nltk.word_tokenize(text)
         singles = [self.stemmer.stem(w, to_lowercase=True) for w in words]
