@@ -1,6 +1,8 @@
 #!/usr/bin/python3
 
 from dataclasses import dataclass
+from collections import defaultdict, OrderedDict
+from heapq import merge
 import getopt
 import math
 import nltk
@@ -107,20 +109,149 @@ class WordToPointerEntry:
 UNIVERSE = ""
 
 
+"""
+Indexer:
+    take in parameters
+    
+"""
+
+class DocumentStream:
+    """Provides a convenient generator over the token stream"""
+    def __init__(self, dir):
+        self.dir = dir
+        
+    def token_stream(self):
+       ...
+    
+
+@dataclass
+class DocumentStreamToken:
+    term: str
+    docId: int
+    
+        
+def tokenize_document(docId, path, processing_fn):
+    with open(path, "r") as inf:
+        text = inf.read()
+        text = processing_fn(text)
+        for token in text:
+            yield DocumentStreamToken(token, docId)
+            
+
+def tokenize_collection(dir, processing_fn):
+    for file in os.listdir(dir):
+        path = os.path.join(dir, file)
+        # Assume that doc id is name of file
+        docId = int(file)
+        for token in tokenize_document(docId, path, processing_fn):
+            yield token
+
+
 class Indexer:
-    def __init__(self, out_dict, out_postings) -> None:
+    def __init__(self, out_dict, out_postings, block_dir="block", block_size=1024) -> None:
+        """
+        The posting files contains the serialized version of the posting lists.
+        The dictionary file contains a serialized version of the term to pointer in the postings list.
+        When we run SPIMI, we will create a block file of each term to list of docIds.
+        """
         self.stemmer = nltk.stem.PorterStemmer()
         self.dictionary = {}
         self.word_to_pointer_dict = {}
         self.out_dict = out_dict
         self.out_postings = out_postings
         self.universe = PostingsList()
+        self.block_dir = block_dir
+        self.block_size = block_size
         # You should not be doing this here, else we can't use the Indexer
         # Maybe make another method
         # if os.path.exists(out_dict):
         #     os.remove(out_dict)
         # if os.path.exists(out_postings):
         #     os.remove(out_postings)
+        
+    def index_collection(self, collection_dir):
+        token_stream = tokenize_collection(collection_dir, processing_fn=self.preprocess_text)
+        print("SPIMI Inverting...")
+        num_blocks = self.spimi_invert(token_stream)
+        print("SPIMI Inverting done.")
+        # self.merge_blocks(num_blocks)
+        # Now to block-way merging
+    
+    def spimi_invert(self, token_stream):
+        def flush_dictionary():
+            nonlocal dictionary, curr_block_number
+            sorted_dict = self.sort_dictionary(dictionary)
+            self.flush_block(curr_block_number, sorted_dict)
+            dictionary = defaultdict(list)
+            curr_block_number += 1
+            
+        import shutil
+        if os.path.exists(self.block_dir):
+            shutil.rmtree(self.block_dir)
+        os.mkdir(self.block_dir)
+        
+        # At the end of it, curr block number will indicate how many blocks were written to disk
+        curr_block_number = 0
+        # in-memory dictionary that will be flushed to disk
+        dictionary = defaultdict(list)
+        
+        for token in token_stream:
+            docId, term = token.docId, token.term
+            dictionary[term].append(docId)
+            if sys.getsizeof(dictionary) > self.block_size:
+                flush_dictionary()
+        # Make sure to handle the last remaining dictionary if it has entries
+        if dictionary:
+            flush_dictionary()
+        return curr_block_number
+           
+    @staticmethod 
+    def sort_dictionary(dictionary: dict):
+        """Dictionary is mapping from unsorted terms to unsorted list of docIds.
+        We want to sort it into a sorted dictionary by terms and by docIds as seen in slide 22 of the lecture slides.
+        """
+        # Use an OrderedDict because it remembers insertion order.
+        new_dict = OrderedDict()
+        # Sort terms in alphabetical order and insert in alphabetical order
+        terms = list(sorted(dictionary.keys()))
+        for term in terms:
+            docIds = sorted(dictionary[term])
+            new_dict[term] = docIds
+        return new_dict
+    
+    
+    def get_block_filename(self, block_id) -> str:
+        """Helper method to obtain block filename given block id"""
+        return os.path.join(self.block_dir, f"block_{block_id}.txt")
+    
+    def flush_block(self, block_id: int, dict: dict):
+        with open(self.get_block_filename(block_id), "w") as inf:
+            for term, docIds in dict.items():
+                inf.write(f"{term}: {docIds}\n")
+
+    def merge_blocks(self, num_blocks: int):
+        """Maintain num_block pointers to each block file and advance line by line"""
+        # Let n = num_blocks
+        # Create n file I/O objects
+        block_files = []
+        block_lines = []
+        for block_id in range(num_blocks):
+            block_files.append(open(self.get_block_filename(block_id), "r"))
+        # with open("")
+        # In here, we will initialise the dictionary of term to pointer as well as the posting list itself
+        while True:
+            # Read one line from each block_file
+            for i in range(num_blocks):
+                block_lines[i] = block_files[i].readline()
+            for block_file in block_files:
+                ...
+            # Clear each term at a time
+            
+            ...
+        
+        # Remember to close them all
+        for block_file in block_files:
+            block_file.close()
 
     def get_memory_size(self):
         return sys.getsizeof(self.dictionary)
@@ -130,6 +261,7 @@ class Indexer:
         Preprocessing done for indexing as well as searching.
         Move to own static method to standardize across.
         """
+        print("Text is " + text)
         text = text.lower()
         words = nltk.word_tokenize(text)
         singles = [self.stemmer.stem(w, to_lowercase=True) for w in words]
@@ -233,38 +365,46 @@ def build_index(in_dir, out_dict, out_postings):
     # This is an empty method
     # Pls implement your code in below
     indexer = Indexer(out_dict, out_postings)
-    for _, _, files in os.walk(in_dir):
-        for file in files:
-            indexer.index(os.path.join(in_dir, file), int(file))
-    indexer.finalize()
-    A = indexer.get_full_postings()
-    print(sys.getsizeof(A))
-    MEMORY_LIMIT = int(1e6)
-    indexer = Indexer(out_dict, out_postings)
-    for _, _, files in os.walk(in_dir):
-        for file in files:
-            indexer.index(os.path.join(in_dir, file), int(file))
-            if indexer.get_memory_size() > MEMORY_LIMIT:
-                indexer.spimi()
-                indexer.dictionary = {}
-    indexer.spimi()
-    B = indexer.get_full_postings()
-    print(sys.getsizeof(B))
-    print(A == B)
-    for k in A:
-        if k not in B:
-            print(k)
-        elif A[k] != B[k]:
-            print(len(A[k]))
-            print(len(B[k]))
-            print()
-    for k in B:
-        if k not in A:
-            print(k)
-        elif A[k] != B[k]:
-            print(len(A[k]))
-            print(len(B[k]))
-            print()
+    indexer.index_collection(in_dir)
+    # Try with hax
+    # indexer = Indexer(out_dict, out_postings)
+    # for _, _, files in os.walk(in_dir):
+    #     for file in files:
+    #         indexer.index(os.path.join(in_dir, file), int(file))
+    # indexer.finalize()
+    # A = indexer.get_full_postings()
+    # print(sys.getsizeof(A))
+    # MEMORY_LIMIT = int(1e6)
+    
+    # # Try with SPIMI
+    # indexer = Indexer(out_dict, out_postings)
+    # for _, _, files in os.walk(in_dir):
+    #     for file in files:
+    #         indexer.index(os.path.join(in_dir, file), int(file))
+    #         if indexer.get_memory_size() > MEMORY_LIMIT:
+    #             indexer.spimi()
+    #             indexer.dictionary = {}
+    # indexer.spimi()
+    # B = indexer.get_full_postings()
+    # print(sys.getsizeof(B))
+    
+    # # Compare
+    
+    # print(A == B)
+    # for k in A:
+    #     if k not in B:
+    #         print(k)
+    #     elif A[k] != B[k]:
+    #         print(len(A[k]))
+    #         print(len(B[k]))
+    #         print()
+    # for k in B:
+    #     if k not in A:
+    #         print(k)
+    #     elif A[k] != B[k]:
+    #         print(len(A[k]))
+    #         print(len(B[k]))
+    #         print()
 
 
 def test_get_posting_lists(out_dict, out_postings):
