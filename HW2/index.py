@@ -14,8 +14,8 @@ import time
 
 class Posting:
     def __init__(self, value) -> None:
-        self.value = value
-        self.skip = None
+        self.value: int = value
+        self.skip: int = None
 
     def __lt__(self, other):
         return self.value < other.value
@@ -72,7 +72,7 @@ class PostingsList:
     def append(self, value: Posting):
         self.plist.append(value)
 
-    def finalize(self):
+    def add_skip_pointers(self):
         self.plist = sorted(list(set(self.plist)), key=lambda p: p.value)
         skips = round(math.sqrt(len(self.plist)))
         step = len(self.plist) // skips
@@ -86,7 +86,7 @@ class PostingsList:
             return
         for i in self.plist:
             i.skip = None
-        self.finalize()
+        self.add_skip_pointers()
 
 
 @dataclass
@@ -172,11 +172,12 @@ class Indexer:
         #     os.remove(out_postings)
         
     def index_collection(self, collection_dir):
-        token_stream = tokenize_collection(collection_dir, processing_fn=self.preprocess_text)
+        # token_stream = tokenize_collection(collection_dir, processing_fn=self.preprocess_text)
         print("SPIMI Inverting...")
-        num_blocks = self.spimi_invert(token_stream)
+        # num_blocks = self.spimi_invert(token_stream)
         print("SPIMI Inverting done.")
-        # self.merge_blocks(num_blocks)
+        num_blocks = 3
+        self.merge_blocks(num_blocks)
         # Now to block-way merging
     
     def spimi_invert(self, token_stream):
@@ -233,27 +234,79 @@ class Indexer:
 
     def merge_blocks(self, num_blocks: int):
         """Maintain num_block pointers to each block file and advance line by line"""
+        def can_still_process(block_lines):
+            print("Running can still process on " + str(block_lines))
+            # Stop processing when all are none
+            result = not all(line is None for line in block_lines)
+            print(result)
+            return result
         # Let n = num_blocks
         # Create n file I/O objects
         block_files = []
-        block_lines = []
         for block_id in range(num_blocks):
             block_files.append(open(self.get_block_filename(block_id), "r"))
+        block_lines = [block_files[i].readline() for i in range(num_blocks)]
         # with open("")
         # In here, we will initialise the dictionary of term to pointer as well as the posting list itself
-        while True:
-            # Read one line from each block_file
-            for i in range(num_blocks):
-                block_lines[i] = block_files[i].readline()
-            for block_file in block_files:
-                ...
-            # Clear each term at a time
+        self.word_to_pointer_dict = {}
+        # As mentioned in the specifications, we will write the postings list with the skip pointers since the index is already constructed here
+        with open(self.out_postings, "wb") as out_pf, open(self.out_dict, "wb") as out_df:
+            while can_still_process(block_lines):
+                print("Block lines " + str(block_lines))
+                # Extract the terms
+                terms = []
+                for i in range(num_blocks):
+                    # We do a "".join(...[:-1]) to deal with weird terms that may contain : itself
+                    if block_lines[i]:
+                        terms.append("".join(block_lines[i].split(":")[:-1]))
+                    else:
+                        terms.append(None)
+                # Choose the alphabetically smallest one
+                # Need to handle for empty term, sort and push None to the end
+                sorted_terms = sorted(terms, key=lambda x: (x is None, x))
+                # This is guaranteed not to be None
+                smallest_term = sorted_terms[0]
+                smallest_term_doc_ids = []
+                for i in range(num_blocks):
+                    if terms[i] == smallest_term:
+                        # Convert list str representation from text file to python list of ints
+                        print(block_lines)
+                        doc_ids = [int(s) for s in block_lines[i].split(":")[-1].strip().replace("[", "").replace("]", "").split(", ")]
+                        smallest_term_doc_ids.append(doc_ids)
+                        # Advance the file reader, if there are no more lines to read
+                        line = block_files[i].readline()
+                        if "\n" not in line and line == "":
+                            block_lines[i] = None
+                        else:
+                            block_lines[i] = line
+                # Make use of the battle tested, lazy loading heapq.merge to do it for us!
+                # merge here assumes that each of the input is sorted (which it is) and does not pull the data all into memory
+                # We need to unwrap the iterables here
+                doc_ids = list(merge(*smallest_term_doc_ids))
+                postings = [Posting(v) for v in doc_ids]
+                posting_list = PostingsList()
+                for posting in postings:
+                    posting_list.append(posting)
+                posting_list.add_skip_pointers()
+
+                # Write to out postings                
+                out_pf_ptr = out_pf.tell()
+                pl_data = pickle.dumps(posting_list)
+                out_pf.write(pl_data)
+                
+                # print to str for verification
+                # out_pf.write(str(posting_list))
+
+                # Write to out dict
+                wpe = WordToPointerEntry(out_pf_ptr, len(pl_data), len(posting_list))
+                wpe_data = pickle.dumps(wpe)
+                out_df.write(wpe_data)
             
-            ...
-        
         # Remember to close them all
         for block_file in block_files:
             block_file.close()
+            
+        print("Done indexing!")
 
     def get_memory_size(self):
         return sys.getsizeof(self.dictionary)
