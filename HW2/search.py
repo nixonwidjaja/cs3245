@@ -1,5 +1,6 @@
 #!/usr/bin/python3
 from index import Indexer, UNIVERSE
+
 # These imports are necessary for Pickle.load
 # Python needs to know what classes are being deserialized into so we need
 # to load the classes into memory for Pickle to work
@@ -11,30 +12,37 @@ import nltk
 import sys
 import getopt
 
+
 def usage():
-    print("usage: " + sys.argv[0] + " -d dictionary-file -p postings-file -q file-of-queries -o output-file-of-results")
+    print(
+        "usage: "
+        + sys.argv[0]
+        + " -d dictionary-file -p postings-file -q file-of-queries -o output-file-of-results"
+    )
+
 
 """
 BOOLEAN EXPRESSION PARSING
 """
 # FIXME: Temporary ? There is probably a better way to structure the query tree
 
+
 class AND:
     def __init__(self, queries):
         self.queries = queries
-        
+
     def add(self, query):
         self.queries.append(query)
         return self
-        
+
     def __repr__(self):
         return "AND [ " + str(self.queries) + " ] "
-    
-    
+
+
 class OR:
     def __init__(self, queries):
         self.queries = queries
-        
+
     def add(self, query):
         self.queries.append(query)
         return self
@@ -47,17 +55,17 @@ class AND_NOT:
     def __init__(self, AND, NOT):
         self.AND = AND
         self.NOT = NOT
-    
+
     def __repr__(self):
         return f"[{self.AND}] AND NOT [{self.NOT}]"
-    
+
 
 class NOT:
     def __init__(self, query):
         self.query = query
-    
+
     def __repr__(self):
-        return f"NOT [ {self.query} ] "        
+        return f"NOT [ {self.query} ] "
 
 
 def split(q):
@@ -69,8 +77,8 @@ def split(q):
     We are also splitting by keywords AND, OR, NOT to separate the tokens.
     For example, queries such as 'bunny balls' should be counted as a single token.
     """
-    q = re.sub(r'[(]', "( ", q)
-    q = re.sub(r'[)]', " )", q)
+    q = re.sub(r"[(]", "( ", q)
+    q = re.sub(r"[)]", " )", q)
     tokens = q.split()
     new_tokens = []
     curr_token = ""
@@ -89,8 +97,8 @@ def split(q):
     if curr_token != "":
         new_tokens.append(curr_token)
     return new_tokens
-    
-    
+
+
 def shunting(tokens):
     """Given a sequence of tokens, return a postfix syntax representation according to
     Shunting Yard algorithm.
@@ -99,19 +107,19 @@ def shunting(tokens):
         return
     operator_stack = []
     result_stack = []
-    
+
     def flush():
         nonlocal operator_stack, result_stack
         while operator_stack:
             result_stack.append(operator_stack.pop())
-    
+
     PRECEDENCE = {
         "NOT": 4,
         "AND NOT": 3,
         "AND": 2,
         "OR": 1,
     }
-    
+
     operators = ["OR", "AND", "NOT"]
     # Apply the Shunting Yard algorithm
     i = 0
@@ -119,7 +127,7 @@ def shunting(tokens):
         token = tokens[i]
         if token.upper() in operators:
             token = token.upper()
-            if token == "AND" and tokens[i+1].upper() == "NOT":
+            if token == "AND" and tokens[i + 1].upper() == "NOT":
                 token = "AND NOT"
                 i += 1
             if operator_stack and PRECEDENCE[operator_stack[-1]] > PRECEDENCE[token]:
@@ -127,7 +135,7 @@ def shunting(tokens):
             operator_stack.append(token)
         elif token == "(":
             right_parenth_idx = tokens[i:].index(")") + i
-            result = shunting(tokens[i+1:right_parenth_idx])
+            result = shunting(tokens[i + 1 : right_parenth_idx])
             i = right_parenth_idx
             for t in result:
                 result_stack.append(t)
@@ -136,7 +144,7 @@ def shunting(tokens):
         i += 1
     flush()
     return result_stack
-    
+
 
 def optimize_ast(query):
     """
@@ -164,7 +172,7 @@ def optimize_ast(query):
                     operand_stack.append(s1.add(s2))
                 else:
                     operand_stack.append(OR([s1, s2]))
-            else:  #token == "AND NOT":
+            else:  # token == "AND NOT":
                 operand_stack.append(AND_NOT(AND=s2, NOT=s1))
         elif token in ["NOT"]:
             s1 = operand_stack.pop()
@@ -180,9 +188,11 @@ def parse_query(query):
     return shunting(split(query))
     # return optimize_ast(shunting(split(query)))
 
+
 """
 BOOLEAN OPERATORS
 """
+
 
 def reapply_skip_pointers(pl: PostingsList) -> PostingsList:
     """
@@ -203,8 +213,7 @@ def reapply_skip_pointers(pl: PostingsList) -> PostingsList:
         if i + step < len(pl):
             pl[i].skip = i + step
     return pl
-        
-    
+
 
 def apply_and(pl1: PostingsList, pl2: PostingsList) -> list[str]:
     """
@@ -273,7 +282,7 @@ def apply_and_not(pl1: PostingsList, pl2: PostingsList) -> list[str]:
     """
     Apply the term1 AND NOT term2
     term1: 1 2 3 4 5
-    term2: 2 3 
+    term2: 2 3
     """
     p1 = p2 = 0  # Pointers to each posting list
     results = []
@@ -306,11 +315,110 @@ def apply_not(pl: PostingsList, universe: PostingsList) -> list[str]:
 """
 Evaluation methods
 """
+posting_lists = {}
+
+
+class Term:
+    def __init__(self, term) -> None:
+        self.term = term
+
+    def evaluate(self, indexer: Indexer):
+        if self.term not in posting_lists:
+            posting_lists[self.term] = indexer.get_posting_list(self.term)
+        return posting_lists[self.term]
+
+    def __repr__(self):
+        return str(self.term)
+
+
+class Not:
+    def __init__(self, term: Term) -> None:
+        self.term = term
+
+    def evaluate(self, indexer: Indexer):
+        return apply_not(self.term.evaluate(), posting_lists[UNIVERSE])
+
+    def __repr__(self):
+        return f"Not( {self.term} )"
+
+
+class And:
+    def __init__(self, terms) -> None:
+        self.terms = terms
+
+    def evaluate(self, indexer: Indexer):
+        res = [term.evaluate() for term in self.terms]
+        res.sort(key=lambda x: len(x))
+        ans = res[0]
+        for i in range(1, len(res)):
+            ans = apply_and(ans, res[i])
+        return ans
+
+    def __repr__(self):
+        return f"And( {self.terms} )"
+
+
+class Or:
+    def __init__(self, terms) -> None:
+        self.terms = terms
+
+    def evaluate(self, indexer: Indexer):
+        res = [term.evaluate() for term in self.terms]
+        # res.sort(key=lambda x: len(x)) Should we sort?
+        ans = res[0]
+        for i in range(1, len(res)):
+            ans = apply_or(ans, res[i])
+        return ans
+
+    def __repr__(self):
+        return f"Or( {self.terms} )"
+
+
+def opt_eval(indexer: Indexer, query: list[str]):
+    # DOES NOT ACCOUNT FOR (AND NOT): ONLY AND, OR, NOT
+    posting_lists[UNIVERSE] = indexer.get_posting_list(UNIVERSE)
+    stack = []
+    for term in query:
+        if term == "AND":
+            a = stack.pop()
+            b = stack.pop()
+            if isinstance(a, And) and isinstance(b, And):
+                stack.append(And(a.terms + b.terms))
+            elif isinstance(a, And):
+                a.terms.append(b)
+                stack.append(a)
+            elif isinstance(b, And):
+                b.terms.append(a)
+                stack.append(b)
+            else:
+                stack.append(And([a, b]))
+        elif term == "OR":
+            a = stack.pop()
+            b = stack.pop()
+            if isinstance(a, Or) and isinstance(b, Or):
+                stack.append(Or(a.terms + b.terms))
+            elif isinstance(a, Or):
+                a.terms.append(b)
+                stack.append(a)
+            elif isinstance(b, Or):
+                b.terms.append(a)
+                stack.append(b)
+            else:
+                stack.append(Or([a, b]))
+        elif term == "NOT":
+            top = stack.pop()
+            stack.append(Not(top))
+        else:  # regular term
+            stack.append(Term(term))
+    return stack[0].evaluate(indexer)
+
+
 def naive_evaluation(indexer: Indexer, query: list[str]):
     """
     The most baseline evaluation that operates according to Shunting.
     This is thus therefore highly likely to be correct.
     """
+
     def get_posting_list(term):
         if isinstance(term, list):
             return term
@@ -318,20 +426,21 @@ def naive_evaluation(indexer: Indexer, query: list[str]):
             return indexer.get_posting_list(term)
         else:
             raise ValueError("Invalid term")
+
     operand_stack = []
     for token in query:
         if token in ["AND", "OR", "AND NOT"]:
             s1 = operand_stack.pop()
             pl1 = get_posting_list(s1)
-            
+
             s2 = operand_stack.pop()
             pl2 = get_posting_list(s2)
-            
+
             if token == "AND":
                 results = apply_and(pl1, pl2)
             elif token == "OR":
                 results = apply_or(pl1, pl2)
-            else:  #token == "AND NOT":
+            else:  # token == "AND NOT":
                 # Note the swap on pl1 and pl2
                 # The term at the top of the stack is the one that should be negated
                 results = apply_and_not(pl2, pl1)
@@ -359,14 +468,14 @@ def run_search(dict_file, postings_file, queries_file, results_file):
     using the given dictionary file and postings file,
     perform searching on the given queries file and output the results to a file
     """
-    print('running search on the queries...')
+    print("running search on the queries...")
     # q = "bill OR Gates AND (vista OR XP) AND NOT mac"
     # print(parse_query(q))
     # # We cannot read the whole posting files into memory
     # query = "american OR analyst"
     indexer = Indexer(dict_file, postings_file)
     # with open("lala.txt", "w") as outf:
-        # query = indexer.preprocess_text(query)
+    # query = indexer.preprocess_text(query)
     # with open("american.txt", "w") as outf:
     #     pl = indexer.get_posting_list("american")
     #     outf.write(str(pl))
@@ -393,27 +502,33 @@ def run_search(dict_file, postings_file, queries_file, results_file):
             num_queries += 1
         print(f"Handled {num_queries} queries")
 
+
 dictionary_file = postings_file = file_of_queries = output_file_of_results = None
 
 try:
-    opts, args = getopt.getopt(sys.argv[1:], 'd:p:q:o:')
+    opts, args = getopt.getopt(sys.argv[1:], "d:p:q:o:")
 except getopt.GetoptError:
     usage()
-    sys.exit(   2)
+    sys.exit(2)
 
 for o, a in opts:
-    if o == '-d':
-        dictionary_file  = a
-    elif o == '-p':
+    if o == "-d":
+        dictionary_file = a
+    elif o == "-p":
         postings_file = a
-    elif o == '-q':
+    elif o == "-q":
         file_of_queries = a
-    elif o == '-o':
+    elif o == "-o":
         file_of_output = a
     else:
         assert False, "unhandled option"
 
-if dictionary_file == None or postings_file == None or file_of_queries == None or file_of_output == None :
+if (
+    dictionary_file == None
+    or postings_file == None
+    or file_of_queries == None
+    or file_of_output == None
+):
     usage()
     sys.exit(2)
 
