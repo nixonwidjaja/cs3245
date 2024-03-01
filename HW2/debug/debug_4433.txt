@@ -1,0 +1,1 @@
+[DocumentStreamToken(term='quarterli', docId=4433), DocumentStreamToken(term='drill', docId=4433), DocumentStreamToken(term='dividend', docId=4433), DocumentStreamToken(term='suspend', docId=4433), DocumentStreamToken(term='parker', docId=4433)]

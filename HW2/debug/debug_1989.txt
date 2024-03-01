@@ -1,0 +1,1 @@
+[DocumentStreamToken(term='bid', docId=1989), DocumentStreamToken(term='reject', docId=1989), DocumentStreamToken(term='takeov', docId=1989), DocumentStreamToken(term='usair', docId=1989), DocumentStreamToken(term='tran', docId=1989), DocumentStreamToken(term='world', docId=1989), DocumentStreamToken(term='group', docId=1989), DocumentStreamToken(term='airlin', docId=1989)]

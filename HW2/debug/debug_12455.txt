@@ -1,0 +1,1 @@
+[DocumentStreamToken(term='polici', docId=12455), DocumentStreamToken(term='unchang', docId=12455), DocumentStreamToken(term='leav', docId=12455), DocumentStreamToken(term='credit', docId=12455), DocumentStreamToken(term='bundesbank', docId=12455)]

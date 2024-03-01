@@ -1,0 +1,1 @@
+[DocumentStreamToken(term='is', docId=14376), DocumentStreamToken(term='gener', docId=14376), DocumentStreamToken(term='gencorp', docId=14376), DocumentStreamToken(term='for', docId=14376), DocumentStreamToken(term='termin', docId=14376), DocumentStreamToken(term='offer', docId=14376), DocumentStreamToken(term='partner', docId=14376), DocumentStreamToken(term='inc', docId=14376)]

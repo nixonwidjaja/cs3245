@@ -1,0 +1,1 @@
+[DocumentStreamToken(term='for', docId=9264), DocumentStreamToken(term='tender', docId=9264), DocumentStreamToken(term='wast', docId=9264), DocumentStreamToken(term='manag', docId=9264), DocumentStreamToken(term='offer', docId=9264), DocumentStreamToken(term='chemlawn', docId=9264), DocumentStreamToken(term='end', docId=9264)]

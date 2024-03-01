@@ -1,0 +1,1 @@
+[DocumentStreamToken(term='feder', docId=8368), DocumentStreamToken(term='jefferson', docId=8368), DocumentStreamToken(term='merg', docId=8368), DocumentStreamToken(term='save', docId=8368), DocumentStreamToken(term='charter', docId=8368), DocumentStreamToken(term='agre', docId=8368), DocumentStreamToken(term=',', docId=8368), DocumentStreamToken(term='to', docId=8368)]

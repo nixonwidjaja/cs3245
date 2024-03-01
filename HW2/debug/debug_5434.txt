@@ -1,0 +1,1 @@
+[DocumentStreamToken(term='set', docId=5434), DocumentStreamToken(term='three-day', docId=5434), DocumentStreamToken(term='fed', docId=5434), DocumentStreamToken(term='it', docId=5434), DocumentStreamToken(term='repurchas', docId=5434), DocumentStreamToken(term='system', docId=5434), DocumentStreamToken(term='agreement', docId=5434), DocumentStreamToken(term='say', docId=5434)]

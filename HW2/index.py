@@ -106,7 +106,7 @@ class WordToPointerEntry:
 
 
 # The term used to represent the list of all doc ids
-UNIVERSE = ""
+UNIVERSE = "-+@\/.,./"  # I am choosing random terms to make this unique
 
 
 """
@@ -144,6 +144,8 @@ def tokenize_collection(dir, processing_fn):
         path = os.path.join(dir, file)
         # Assume that doc id is name of file
         docId = int(file)
+        with open(f"debug_{file}.txt", "w") as outf:
+            outf.write(str(list(tokenize_document(docId, path, processing_fn))))
         for token in tokenize_document(docId, path, processing_fn):
             yield token
 
@@ -172,12 +174,11 @@ class Indexer:
         #     os.remove(out_postings)
         
     def index_collection(self, collection_dir):
-        # token_stream = tokenize_collection(collection_dir, processing_fn=self.preprocess_text)
+        token_stream = tokenize_collection(collection_dir, processing_fn=self.preprocess_text)
         print("SPIMI Inverting...")
-        # num_blocks = self.spimi_invert(token_stream)
+        num_blocks = self.spimi_invert(token_stream)
         print("SPIMI Inverting done.")
-        num_blocks = 3
-        self.merge_blocks(num_blocks)
+        self.merge_blocks(num_blocks, collection_dir)
         # Now to block-way merging
     
     def spimi_invert(self, token_stream):
@@ -232,13 +233,11 @@ class Indexer:
             for term, docIds in dict.items():
                 inf.write(f"{term}: {docIds}\n")
 
-    def merge_blocks(self, num_blocks: int):
+    def merge_blocks(self, num_blocks: int, collection_dir: str):
         """Maintain num_block pointers to each block file and advance line by line"""
         def can_still_process(block_lines):
-            print("Running can still process on " + str(block_lines))
             # Stop processing when all are none
             result = not all(line is None for line in block_lines)
-            print(result)
             return result
         # Let n = num_blocks
         # Create n file I/O objects
@@ -250,9 +249,9 @@ class Indexer:
         # In here, we will initialise the dictionary of term to pointer as well as the posting list itself
         self.word_to_pointer_dict = {}
         # As mentioned in the specifications, we will write the postings list with the skip pointers since the index is already constructed here
-        with open(self.out_postings, "wb") as out_pf, open(self.out_dict, "wb") as out_df:
+        # We assume that the dictionary to the WPE fits into memory
+        with open(self.out_postings, "wb") as out_pf:
             while can_still_process(block_lines):
-                print("Block lines " + str(block_lines))
                 # Extract the terms
                 terms = []
                 for i in range(num_blocks):
@@ -270,7 +269,6 @@ class Indexer:
                 for i in range(num_blocks):
                     if terms[i] == smallest_term:
                         # Convert list str representation from text file to python list of ints
-                        print(block_lines)
                         doc_ids = [int(s) for s in block_lines[i].split(":")[-1].strip().replace("[", "").replace("]", "").split(", ")]
                         smallest_term_doc_ids.append(doc_ids)
                         # Advance the file reader, if there are no more lines to read
@@ -299,13 +297,23 @@ class Indexer:
 
                 # Write to out dict
                 wpe = WordToPointerEntry(out_pf_ptr, len(pl_data), len(posting_list))
-                wpe_data = pickle.dumps(wpe)
-                out_df.write(wpe_data)
-            
+                self.word_to_pointer_dict[smallest_term] = wpe
+            # We are done with the SPIMI merge here but we are going to add the Universe entry
+            universe_posting_list = PostingsList()
+            for file in os.listdir(collection_dir):
+                posting = Posting(value=int(file))
+                universe_posting_list.append(posting)
+            universe_posting_list.add_skip_pointers()
+            out_pf_ptr = out_pf.tell()
+            pl_data = pickle.dumps(universe_posting_list)
+            out_pf.write(pl_data)
+            wpe = WordToPointerEntry(out_pf_ptr, len(pl_data), len(universe_posting_list))
+            self.word_to_pointer_dict[UNIVERSE] = wpe
         # Remember to close them all
         for block_file in block_files:
             block_file.close()
-            
+        with open(self.out_dict, "wb") as out_df:
+            pickle.dump(self.word_to_pointer_dict, out_df)
         print("Done indexing!")
 
     def get_memory_size(self):
@@ -334,7 +342,7 @@ class Indexer:
 
     def finalize(self):
         for s in self.dictionary:
-            self.dictionary[s].finalize()
+            self.dictionary[s].add_skip_pointers()
         with open(self.out_postings, "wb") as f:
             for word, pl in self.dictionary.items():
                 pointer = f.tell()
@@ -418,59 +426,60 @@ def build_index(in_dir, out_dict, out_postings):
     print("indexing...")
     # This is an empty method
     # Pls implement your code in below
+    # Try with hax
+    indexer = Indexer(out_dict, out_postings)
+    for _, _, files in os.walk(in_dir):
+        for file in files:
+            indexer.index(os.path.join(in_dir, file), int(file))
+    indexer.finalize()
+    A = indexer.get_full_postings()
+    print(sys.getsizeof(A))
+    MEMORY_LIMIT = int(1e6)
+    
+    # Try with SPIMI
     indexer = Indexer(out_dict, out_postings)
     indexer.index_collection(in_dir)
-    # Try with hax
-    # indexer = Indexer(out_dict, out_postings)
-    # for _, _, files in os.walk(in_dir):
-    #     for file in files:
-    #         indexer.index(os.path.join(in_dir, file), int(file))
-    # indexer.finalize()
-    # A = indexer.get_full_postings()
-    # print(sys.getsizeof(A))
-    # MEMORY_LIMIT = int(1e6)
-    
-    # # Try with SPIMI
-    # indexer = Indexer(out_dict, out_postings)
     # for _, _, files in os.walk(in_dir):
     #     for file in files:
     #         indexer.index(os.path.join(in_dir, file), int(file))
     #         if indexer.get_memory_size() > MEMORY_LIMIT:
     #             indexer.spimi()
     #             indexer.dictionary = {}
-    # indexer.spimi()
-    # B = indexer.get_full_postings()
-    # print(sys.getsizeof(B))
+    B = indexer.get_full_postings()
+    print(sys.getsizeof(B))
     
     # # Compare
     
-    # print(A == B)
-    # for k in A:
-    #     if k not in B:
-    #         print(k)
-    #     elif A[k] != B[k]:
-    #         print(len(A[k]))
-    #         print(len(B[k]))
-    #         print()
-    # for k in B:
-    #     if k not in A:
-    #         print(k)
-    #     elif A[k] != B[k]:
-    #         print(len(A[k]))
-    #         print(len(B[k]))
-    #         print()
+    print(A == B)
+    with open("debug.txt", "w") as outf:
+        outf.write("Checking A\n")
+        for k in A:
+            if k not in B:
+                outf.write(f"{k} is not in B but it is in A\n")
+            elif A[k] != B[k]:
+                outf.write(f"{len(A[k])} for {k} in A\n")
+                outf.write(f"{A[k]} for {k} in A\n")
+                outf.write(f"{len(B[k])} for {k} in B\n")
+                outf.write(f"{B[k]} for {k} in A\n")
+        for k in B:
+            if k not in A:
+                outf.write(f"{k} is not in B but it is in A\n")
+            elif A[k] != B[k]:
+                outf.write(f"{len(A[k])} for {k} in A\n")
+                outf.write(f"{A[k]} for {k} in A\n")
+                outf.write(f"{len(B[k])} for {k} in B\n")
+                outf.write(f"{B[k]} for {k} in A\n")
 
 
 def test_get_posting_lists(out_dict, out_postings):
     print("test get posting lists...")
     indexer = Indexer(out_dict, out_postings)
     indexer.load()
-    print(indexer.get_posting_list(""))
-    # for word in ["billion", "u.s.", "dollar", "week", ",", "mln"]:
-    #     print(word)
-    #     print(type(indexer.get_posting_list(word)))
-    #     print(indexer.word_to_pointer_dict[word])
-    #     break
+    for word in ["billion", "u.s.", "dollar", "week", ",", "mln"]:
+        print(word)
+        print(indexer.get_posting_list(word))
+        print(indexer.word_to_pointer_dict[word])
+        break
 
 
 def usage():

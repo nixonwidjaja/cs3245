@@ -1,0 +1,1 @@
+[DocumentStreamToken(term='declar', docId=8533), DocumentStreamToken(term='american', docId=8533), DocumentStreamToken(term='two-for-on', docId=8533), DocumentStreamToken(term='a', docId=8533), DocumentStreamToken(term='stock', docId=8533), DocumentStreamToken(term='split', docId=8533), DocumentStreamToken(term='express', docId=8533)]

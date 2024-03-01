@@ -1,0 +1,1 @@
+[DocumentStreamToken(term='line', docId=12018), DocumentStreamToken(term='of', docId=12018), DocumentStreamToken(term='delta', docId=12018), DocumentStreamToken(term='western', docId=12018), DocumentStreamToken(term='complet', docId=12018), DocumentStreamToken(term='acquisit', docId=12018), DocumentStreamToken(term='air', docId=12018)]

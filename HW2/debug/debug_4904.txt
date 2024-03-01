@@ -1,0 +1,1 @@
+[DocumentStreamToken(term='allegheni', docId=4904), DocumentStreamToken(term='for', docId=4904), DocumentStreamToken(term='tender', docId=4904), DocumentStreamToken(term='intern', docId=4904), DocumentStreamToken(term='inc', docId=4904), DocumentStreamToken(term='begin', docId=4904), DocumentStreamToken(term='acquisit', docId=4904), DocumentStreamToken(term='sunter', docId=4904)]

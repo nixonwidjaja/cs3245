@@ -1,0 +1,1 @@
+[DocumentStreamToken(term='of', docId=2794), DocumentStreamToken(term='pct', docId=2794), DocumentStreamToken(term='twa', docId=2794), DocumentStreamToken(term='15', docId=2794), DocumentStreamToken(term='ownership', docId=2794), DocumentStreamToken(term='usair', docId=2794), DocumentStreamToken(term='confirm', docId=2794), DocumentStreamToken(term='group', docId=2794)]

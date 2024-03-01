@@ -1,0 +1,1 @@
+[DocumentStreamToken(term='gencorp', docId=5549), DocumentStreamToken(term='ct', docId=5549), DocumentStreamToken(term='vs', docId=5549), DocumentStreamToken(term='1st', docId=5549), DocumentStreamToken(term='qtr', docId=5549), DocumentStreamToken(term='84', docId=5549), DocumentStreamToken(term='shr', docId=5549), DocumentStreamToken(term='77', docId=5549)]

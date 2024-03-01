@@ -1,0 +1,1 @@
+[DocumentStreamToken(term='american', docId=10064), DocumentStreamToken(term='first', docId=10064), DocumentStreamToken(term='brand', docId=10064), DocumentStreamToken(term='see', docId=10064), DocumentStreamToken(term='record', docId=10064), DocumentStreamToken(term='result', docId=10064), DocumentStreamToken(term='quarter', docId=10064)]

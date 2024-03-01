@@ -1,0 +1,1 @@
+[DocumentStreamToken(term='reject', docId=8822), DocumentStreamToken(term='offer', docId=8822), DocumentStreamToken(term='calni', docId=8822), DocumentStreamToken(term='acquisit', docId=8822), DocumentStreamToken(term='pepsico', docId=8822), DocumentStreamToken(term='inc', docId=8822)]

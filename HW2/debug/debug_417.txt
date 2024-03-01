@@ -1,0 +1,1 @@
+[DocumentStreamToken(term='09:39:50.97', docId=417), DocumentStreamToken(term='2-mar-1987', docId=417)]

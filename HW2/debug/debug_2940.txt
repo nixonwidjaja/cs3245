@@ -1,0 +1,1 @@
+[DocumentStreamToken(term='twa', docId=2940), DocumentStreamToken(term='for', docId=2940), DocumentStreamToken(term='usair', docId=2940), DocumentStreamToken(term='dismiss', docId=2940), DocumentStreamToken(term='transport', docId=2940), DocumentStreamToken(term='depart', docId=2940), DocumentStreamToken(term='control', docId=2940), DocumentStreamToken(term='applic', docId=2940)]

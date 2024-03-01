@@ -1,0 +1,1 @@
+[DocumentStreamToken(term='dealer', docId=9282), DocumentStreamToken(term='yen', docId=9282), DocumentStreamToken(term='for', docId=9282), DocumentStreamToken(term='frankfurt', docId=9282), DocumentStreamToken(term='dollar', docId=9282), DocumentStreamToken(term='-', docId=9282), DocumentStreamToken(term='buy', docId=9282), DocumentStreamToken(term='bundesbank', docId=9282)]
