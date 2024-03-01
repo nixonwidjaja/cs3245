@@ -336,7 +336,7 @@ class Not:
         self.term = term
 
     def evaluate(self, indexer: Indexer):
-        return apply_not(self.term.evaluate(), posting_lists[UNIVERSE])
+        return apply_not(self.term.evaluate(indexer), posting_lists[UNIVERSE])
 
     def __repr__(self):
         return f"Not( {self.term} )"
@@ -347,7 +347,7 @@ class And:
         self.terms = terms
 
     def evaluate(self, indexer: Indexer):
-        res = [term.evaluate() for term in self.terms]
+        res = [term.evaluate(indexer) for term in self.terms]
         res.sort(key=lambda x: len(x))
         ans = res[0]
         for i in range(1, len(res)):
@@ -363,7 +363,7 @@ class Or:
         self.terms = terms
 
     def evaluate(self, indexer: Indexer):
-        res = [term.evaluate() for term in self.terms]
+        res = [term.evaluate(indexer) for term in self.terms]
         # res.sort(key=lambda x: len(x)) Should we sort?
         ans = res[0]
         for i in range(1, len(res)):
