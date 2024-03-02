@@ -37,26 +37,20 @@ def split(q):
     q = re.sub(r"[(]", "( ", q)
     q = re.sub(r"[)]", " )", q)
     tokens = q.split()
-    new_tokens = []
-    curr_token = ""
+    regular_term_count = 0
+    if tokens[0] in ["AND", "OR", "NOT"] or tokens[-1] in ["AND", "OR", "NOT"]:
+        return None
     for token in tokens:
-        if token.upper() in ["AND", "OR", "NOT", "(", ")"]:
-            # if the query is syntatically correct, curr_token will not be ""
-            # Possible for curr_token to be "" if its AND NOT
-            if curr_token != "":
-                new_tokens.append(curr_token)
-                curr_token = ""
-            new_tokens.append(token)
-        elif curr_token == "":
-            curr_token = token
+        if token.upper() not in ["AND", "OR", "NOT", "(", ")"]:
+            regular_term_count += 1
+            if regular_term_count > 1:
+                return None
         else:
-            curr_token = curr_token + " " + token
-    if curr_token != "":
-        new_tokens.append(curr_token)
-    return new_tokens
+            regular_term_count = 0
+    return tokens
 
 
-def shunting(tokens):
+def shunting(tokens) -> list[str]:
     """Given a sequence of tokens, return a postfix syntax representation according to
     Shunting Yard algorithm.
     """
@@ -97,15 +91,6 @@ def shunting(tokens):
         i += 1
     flush()
     return result_stack
-
-
-def parse_query(query, preprocessing_fn: callable):
-    """Given a boolean query, convert it into an optimized ast"""
-    query = preprocessing_fn(query)
-    if isinstance(query, list):
-        query = " ".join(query)
-    print("Query after preprocessing is: " + query)
-    return shunting(split(query))
 
 
 """
@@ -391,6 +376,14 @@ def naive_evaluation(indexer: Indexer, query: list[str]):
     return results
 
 
+def search(query: str, indexer: Indexer) -> str:
+    splitted = split(query)
+    if splitted is None:
+        return ""
+    query_list = shunting(splitted)
+    return opt_eval(indexer, query_list)
+
+
 def run_search(dict_file, postings_file, queries_file, results_file):
     """
     using the given dictionary file and postings file,
@@ -406,9 +399,7 @@ def run_search(dict_file, postings_file, queries_file, results_file):
             print("OG Query is : " + query)
             if not query:
                 break
-            query = parse_query(query, indexer.preprocess_text)
-            # results = naive_evaluation(indexer, query)
-            results = opt_eval(indexer, query)
+            results = search(query, indexer)
             outf.write(results + "\n")
             num_queries += 1
         print(f"Handled {num_queries} queries")
