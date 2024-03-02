@@ -114,7 +114,9 @@ BOOLEAN OPERATORS
 
 def convert_posting_to_list(result: list[int]) -> PostingsList:
     """need to recreate the Posting"""
-    return PostingsList([Posting(docId) for docId in result])
+    pl = PostingsList()
+    pl.plist = [Posting(docId) for docId in result]
+    return pl
 
 
 def reapply_skip_pointers(pl: PostingsList) -> PostingsList:

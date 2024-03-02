@@ -61,8 +61,8 @@ class Posting:
 
 
 class PostingsList:
-    def __init__(self, plist=[]) -> None:
-        self.plist = plist
+    def __init__(self) -> None:
+        self.plist = []
 
     def __repr__(self):
         return str(self.plist)
@@ -171,7 +171,7 @@ def tokenize_document(docId, path, processing_fn):
             yield DocumentStreamToken(token, docId)
 
 
-def tokenize_collection(dir, processing_fn, debug=True):
+def tokenize_collection(dir, processing_fn, debug=False):
     for file in os.listdir(dir):
         path = os.path.join(dir, file)
         # Assume that doc id is name of file
