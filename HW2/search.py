@@ -40,7 +40,7 @@ def split(q, stemmer: nltk.stem.PorterStemmer):
     tokens = q.split()
     new_tokens = []
     regular_term_count = 0
-    if tokens[0] in ["AND", "OR", "NOT"] or tokens[-1] in ["AND", "OR", "NOT"]:
+    if tokens[0] in ["AND", "OR"] or tokens[-1] in ["AND", "OR", "NOT"]:
         return None
     for token in tokens:
         if token.upper() in ["AND", "OR", "NOT", "(", ")"]:
