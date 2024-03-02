@@ -43,13 +43,13 @@ def split(q, stemmer: nltk.stem.PorterStemmer):
     if tokens[0] in ["AND", "OR", "NOT"] or tokens[-1] in ["AND", "OR", "NOT"]:
         return None
     for token in tokens:
-        if token.upper() not in ["AND", "OR", "NOT", "(", ")"]:
+        if token.upper() in ["AND", "OR", "NOT", "(", ")"]:
+            regular_term_count = 0
+            new_tokens.append(token.upper())
+        else:
             regular_term_count += 1
             if regular_term_count > 1:
                 return None
-            new_tokens.append(token.upper())
-        else:
-            regular_term_count = 0
             new_tokens.append(stemmer.stem(token.lower(), to_lowercase=True))
     return new_tokens
 
