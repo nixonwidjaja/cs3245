@@ -214,7 +214,7 @@ def reapply_skip_pointers(pl: PostingsList) -> PostingsList:
     return pl
 
 
-def apply_and(pl1: PostingsList, pl2: PostingsList) -> list[str]:
+def apply_and(pl1: PostingsList, pl2: PostingsList) -> PostingsList:
     """
     Apply the AND operation on term 1 and term 2 using low level operations.
     We assume that the posting list file for both term exists.
@@ -246,10 +246,10 @@ def apply_and(pl1: PostingsList, pl2: PostingsList) -> list[str]:
                     p2 = pl2[p2].skip
             else:
                 p2 += 1
-    return results
+    return PostingsList(results)
 
 
-def apply_or(pl1: PostingsList, pl2: PostingsList) -> list[str]:
+def apply_or(pl1: PostingsList, pl2: PostingsList) -> PostingsList:
     """
     Apply the OR operation on term 1 and term 2 using low level operations.
     We assume that the posting list file for both term exists.
@@ -274,10 +274,10 @@ def apply_or(pl1: PostingsList, pl2: PostingsList) -> list[str]:
     while p2 < len(pl2):
         results.append(pl2[p2])
         p2 += 1
-    return results
+    return PostingsList(results)
 
 
-def apply_and_not(pl1: PostingsList, pl2: PostingsList) -> list[str]:
+def apply_and_not(pl1: PostingsList, pl2: PostingsList) -> PostingsList:
     """
     Apply the term1 AND NOT term2
     term1: 1 2 3 4 5
@@ -303,10 +303,10 @@ def apply_and_not(pl1: PostingsList, pl2: PostingsList) -> list[str]:
     while p1 < len(pl1):
         results.append(pl1[p1])
         p1 += 1
-    return results
+    return PostingsList(results)
 
 
-def apply_not(pl: PostingsList, universe: PostingsList) -> list[str]:
+def apply_not(pl: PostingsList, universe: PostingsList) -> PostingsList:
     """Get all terms in universe AND NOT pl"""
     return apply_and_not(universe, pl)
 
@@ -335,7 +335,8 @@ class Not:
         self.term = term
 
     def evaluate(self, indexer: Indexer):
-        return apply_not(self.term.evaluate(indexer), posting_lists[UNIVERSE])
+        ans = apply_not(self.term.evaluate(indexer), posting_lists[UNIVERSE])
+        return reapply_skip_pointers(ans)
 
     def __repr__(self):
         return f"Not( {self.term} )"
@@ -347,10 +348,14 @@ class And:
 
     def evaluate(self, indexer: Indexer):
         res = [term.evaluate(indexer) for term in self.terms]
+        # print(res)
         res.sort(key=lambda x: len(x))
         ans = res[0]
         for i in range(1, len(res)):
             ans = apply_and(ans, res[i])
+            # Need to reapply skip pointers at every iteration
+            ans = reapply_skip_pointers(ans)
+        ans = reapply_skip_pointers(ans)
         return ans
 
     def __repr__(self):
@@ -367,6 +372,7 @@ class Or:
         ans = res[0]
         for i in range(1, len(res)):
             ans = apply_or(ans, res[i])
+            ans = reapply_skip_pointers(ans)
         return ans
 
     def __repr__(self):
@@ -375,6 +381,8 @@ class Or:
 
 def opt_eval(indexer: Indexer, query: list[str]):
     # DOES NOT ACCOUNT FOR (AND NOT): ONLY AND, OR, NOT
+    # Make sure to reset posting_lists everytime
+    posting_lists.clear()
     posting_lists[UNIVERSE] = indexer.get_posting_list(UNIVERSE)
     stack = []
     for term in query:
@@ -409,7 +417,10 @@ def opt_eval(indexer: Indexer, query: list[str]):
             stack.append(Not(top))
         else:  # regular term
             stack.append(Term(term))
-    return stack[0].evaluate(indexer)
+    ans = stack[0].evaluate(indexer)
+    # assert isinstance(ans, PostingsList)
+    ans = [str(posting.value) for posting in ans.plist]
+    return " ".join(ans)
 
 
 def naive_evaluation(indexer: Indexer, query: list[str]):
@@ -478,7 +489,8 @@ def run_search(dict_file, postings_file, queries_file, results_file):
             if not query:
                 break
             query = parse_query(query, indexer.preprocess_text)
-            results = naive_evaluation(indexer, query)
+            # results = naive_evaluation(indexer, query)
+            results = opt_eval(indexer, query)
             outf.write(results + "\n")
             num_queries += 1
         print(f"Handled {num_queries} queries")

@@ -45,8 +45,8 @@ class Posting:
 
 
 class PostingsList:
-    def __init__(self) -> None:
-        self.plist = []
+    def __init__(self, plist=[]) -> None:
+        self.plist = plist
 
     def __repr__(self):
         return str(self.plist)
@@ -424,7 +424,8 @@ class Indexer:
 
     def get_posting_list(self, word: str, filename=None) -> PostingsList:
         filename = self.out_postings if filename is None else filename
-        word = self.stemmer.stem(word.lower(), to_lowercase=True)
+        if word != UNIVERSE:
+            word = self.stemmer.stem(word.lower(), to_lowercase=True)
         if word not in self.word_to_pointer_dict or not os.path.exists(filename):
             return PostingsList()
         with open(filename, "rb") as f:
