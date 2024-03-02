@@ -139,13 +139,14 @@ def tokenize_document(docId, path, processing_fn):
             yield DocumentStreamToken(token, docId)
 
 
-def tokenize_collection(dir, processing_fn):
+def tokenize_collection(dir, processing_fn, debug=False):
     for file in os.listdir(dir):
         path = os.path.join(dir, file)
         # Assume that doc id is name of file
         docId = int(file)
-        with open(f"debug_{file}.txt", "w") as outf:
-            outf.write(str(list(tokenize_document(docId, path, processing_fn))))
+        if debug:
+            with open(f"debug_{file}.txt", "w") as outf:
+                outf.write(str(list(tokenize_document(docId, path, processing_fn))))
         for token in tokenize_document(docId, path, processing_fn):
             yield token
 
@@ -168,12 +169,6 @@ class Indexer:
         self.universe = PostingsList()
         self.block_dir = block_dir
         self.block_size = block_size
-        # You should not be doing this here, else we can't use the Indexer
-        # Maybe make another method
-        # if os.path.exists(out_dict):
-        #     os.remove(out_dict)
-        # if os.path.exists(out_postings):
-        #     os.remove(out_postings)
 
     def index_collection(self, collection_dir):
         token_stream = tokenize_collection(
@@ -181,9 +176,10 @@ class Indexer:
         )
         print("SPIMI Inverting...")
         num_blocks = self.spimi_invert(token_stream)
-        print("SPIMI Inverting done.")
+        print("SPIMI Inverting done!")
+        print("Merging blocks...")
         self.merge_blocks(num_blocks, collection_dir)
-        # Now to block-way merging
+        print("Blocks merged!")
 
     def spimi_invert(self, token_stream):
         def flush_dictionary():
@@ -261,8 +257,8 @@ class Indexer:
                 # Extract the terms
                 terms = []
                 for i in range(num_blocks):
-                    # We do a "".join(...[:-1]) to deal with weird terms that may contain : itself
                     if block_lines[i]:
+                        # We do a "".join(...[:-1]) to deal with weird terms that may contain : itself
                         terms.append("".join(block_lines[i].split(":")[:-1]))
                     else:
                         terms.append(None)
@@ -439,7 +435,12 @@ def build_index(in_dir, out_dict, out_postings):
     build index from documents stored in the input directory,
     then output the dictionary file and postings file
     """
-    print("indexing...")
+    print(f"indexing {in_dir} to dictionary file {out_dict} and postings file {out_postings}")
+    indexer = Indexer(out_dict, out_postings)
+    indexer.index_collection(in_dir)
+
+def compare(in_dir, out_dict, out_postings):
+    print("Comparing in-memory hax and block impl")
     # This is an empty method
     # Pls implement your code in below
     # Try with hax
@@ -455,12 +456,6 @@ def build_index(in_dir, out_dict, out_postings):
     # Try with SPIMI
     indexer = Indexer(out_dict, out_postings)
     indexer.index_collection(in_dir)
-    # for _, _, files in os.walk(in_dir):
-    #     for file in files:
-    #         indexer.index(os.path.join(in_dir, file), int(file))
-    #         if indexer.get_memory_size() > MEMORY_LIMIT:
-    #             indexer.spimi()
-    #             indexer.dictionary = {}
     B = indexer.get_full_postings()
     print(sys.getsizeof(B))
 
@@ -532,6 +527,6 @@ if __name__ == "__main__":
         usage()
         sys.exit(2)
 
-    build_index(input_directory, output_file_dictionary, output_file_postings)
-    # test_get_posting_lists(output_file_dictionary, output_file_postings)
+    # build_index(input_directory, output_file_dictionary, output_file_postings)
+    test_get_posting_lists(output_file_dictionary, output_file_postings)
     # python3 index.py -i ./reuters/small-training -d dictionary.txt -p postings.txt

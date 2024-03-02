@@ -469,6 +469,7 @@ def run_search(dict_file, postings_file, queries_file, results_file):
     # # We cannot read the whole posting files into memory
     # query = "american OR analyst"
     indexer = Indexer(dict_file, postings_file)
+    indexer.load()
     # with open("lala.txt", "w") as outf:
     # query = indexer.preprocess_text(query)
     # with open("american.txt", "w") as outf:
@@ -493,6 +494,7 @@ def run_search(dict_file, postings_file, queries_file, results_file):
             print(query)
             query = parse_query(query)
             results = naive_evaluation(indexer, query)
+            print(results)
             outf.write(results + "\n")
             num_queries += 1
         print(f"Handled {num_queries} queries")
