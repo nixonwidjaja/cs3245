@@ -153,13 +153,15 @@ def tokenize_collection(dir, processing_fn, debug=False):
 
 class Indexer:
     def __init__(
-        self, out_dict, out_postings, block_dir="block", block_size=500000
+        self, out_dict, out_postings, block_dir="block", block_size=500000, use_binary=True
     ) -> None:
         """
         The posting files contains the serialized version of the posting lists.
         The dictionary file contains a serialized version of the term to pointer in the postings list.
         When we run SPIMI, we will create a block file of each term to list of docIds.
         Default to 0.5MB for the block size
+        Note that use_Binary=False is purely for debugging and will not work with loading at the moment cos deserialization would
+        be slightly harder to write.
         """
         self.stemmer = nltk.stem.PorterStemmer()
         self.dictionary = {}
@@ -169,6 +171,7 @@ class Indexer:
         self.universe = PostingsList()
         self.block_dir = block_dir
         self.block_size = block_size
+        self.use_binary = use_binary
 
     def index_collection(self, collection_dir):
         token_stream = tokenize_collection(
@@ -252,7 +255,8 @@ class Indexer:
         self.word_to_pointer_dict = {}
         # As mentioned in the specifications, we will write the postings list with the skip pointers since the index is already constructed here
         # We assume that the dictionary to the WPE fits into memory
-        with open(self.out_postings, "wb") as out_pf:
+        mode = "wb" if self.use_binary else "w"
+        with open(self.out_postings, mode) as out_pf:
             while can_still_process(block_lines):
                 # Extract the terms
                 terms = []
@@ -299,7 +303,7 @@ class Indexer:
 
                 # Write to out postings
                 out_pf_ptr = out_pf.tell()
-                pl_data = pickle.dumps(posting_list)
+                pl_data = pickle.dumps(posting_list) if self.use_binary else str(posting_list)
                 out_pf.write(pl_data)
 
                 # print to str for verification
@@ -315,7 +319,7 @@ class Indexer:
                 universe_posting_list.append(posting)
             universe_posting_list.add_skip_pointers()
             out_pf_ptr = out_pf.tell()
-            pl_data = pickle.dumps(universe_posting_list)
+            pl_data = pickle.dumps(universe_posting_list) if self.use_binary else str(universe_posting_list)
             out_pf.write(pl_data)
             wpe = WordToPointerEntry(
                 out_pf_ptr, len(pl_data), len(universe_posting_list)
@@ -324,8 +328,11 @@ class Indexer:
         # Remember to close them all
         for block_file in block_files:
             block_file.close()
-        with open(self.out_dict, "wb") as out_df:
-            pickle.dump(self.word_to_pointer_dict, out_df)
+        with open(self.out_dict, mode) as out_df:
+            if self.use_binary:
+                pickle.dump(self.word_to_pointer_dict, out_df)
+            else:
+                out_df.write(str(self.word_to_pointer_dict))
         print("Done indexing!")
 
     def get_memory_size(self):
@@ -436,7 +443,7 @@ def build_index(in_dir, out_dict, out_postings):
     then output the dictionary file and postings file
     """
     print(f"indexing {in_dir} to dictionary file {out_dict} and postings file {out_postings}")
-    indexer = Indexer(out_dict, out_postings)
+    indexer = Indexer(out_dict, out_postings, use_binary=False)
     indexer.index_collection(in_dir)
 
 def compare(in_dir, out_dict, out_postings):
@@ -527,6 +534,6 @@ if __name__ == "__main__":
         usage()
         sys.exit(2)
 
-    # build_index(input_directory, output_file_dictionary, output_file_postings)
+    build_index(input_directory, output_file_dictionary, output_file_postings)
     test_get_posting_lists(output_file_dictionary, output_file_postings)
     # python3 index.py -i ./reuters/small-training -d dictionary.txt -p postings.txt
