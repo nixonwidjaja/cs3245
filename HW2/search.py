@@ -26,7 +26,7 @@ BOOLEAN EXPRESSION PARSING
 """
 
 
-def split(q, stemmer):
+def split(q, stemmer: nltk.stem.PorterStemmer):
     """
     Split the query into their individual tokens.
     We are adding whitespaces between the parentheses to make it easy to recursively
@@ -50,7 +50,7 @@ def split(q, stemmer):
             new_tokens.append(token.upper())
         else:
             regular_term_count = 0
-            new_tokens.append(stemmer.stem(token, to_lowercase=True))
+            new_tokens.append(stemmer.stem(token.lower(), to_lowercase=True))
     return new_tokens
 
 
@@ -380,7 +380,7 @@ def naive_evaluation(indexer: Indexer, query: list[str]):
     return results
 
 
-def search(query: str, indexer: Indexer, stemmer) -> str:
+def search(query: str, indexer: Indexer, stemmer: nltk.stem.PorterStemmer) -> str:
     splitted = split(query, stemmer)
     if splitted is None:
         return ""
