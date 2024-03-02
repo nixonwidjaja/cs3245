@@ -178,8 +178,12 @@ def optimize_ast(query):
     return operand_stack[0]
 
 
-def parse_query(query):
+def parse_query(query, preprocessing_fn: callable):
     """Given a boolean query, convert it into an optimized ast"""
+    query = preprocessing_fn(query)
+    if isinstance(query, list):
+        query = " ".join(query)
+    print(query)
     return shunting(split(query))
     # return optimize_ast(shunting(split(query)))
 
@@ -492,7 +496,7 @@ def run_search(dict_file, postings_file, queries_file, results_file):
             if not query:
                 break
             print(query)
-            query = parse_query(query)
+            query = parse_query(query, indexer.preprocess_text)
             results = naive_evaluation(indexer, query)
             print(results)
             outf.write(results + "\n")

@@ -443,7 +443,7 @@ def build_index(in_dir, out_dict, out_postings):
     then output the dictionary file and postings file
     """
     print(f"indexing {in_dir} to dictionary file {out_dict} and postings file {out_postings}")
-    indexer = Indexer(out_dict, out_postings, use_binary=False)
+    indexer = Indexer(out_dict, out_postings)
     indexer.index_collection(in_dir)
 
 def compare(in_dir, out_dict, out_postings):
