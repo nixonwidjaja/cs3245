@@ -9,7 +9,6 @@ import nltk
 import os
 import pickle
 import sys
-import time
 
 
 class Posting:
@@ -115,21 +114,22 @@ Indexer:
     
 """
 
+
 class DocumentStream:
     """Provides a convenient generator over the token stream"""
+
     def __init__(self, dir):
         self.dir = dir
-        
-    def token_stream(self):
-       ...
-    
+
+    def token_stream(self): ...
+
 
 @dataclass
 class DocumentStreamToken:
     term: str
     docId: int
-    
-        
+
+
 def tokenize_document(docId, path, processing_fn):
     with open(path, "r") as inf:
         text = inf.read()
@@ -137,7 +137,7 @@ def tokenize_document(docId, path, processing_fn):
         text = list(set(processing_fn(text)))
         for token in text:
             yield DocumentStreamToken(token, docId)
-            
+
 
 def tokenize_collection(dir, processing_fn):
     for file in os.listdir(dir):
@@ -151,7 +151,9 @@ def tokenize_collection(dir, processing_fn):
 
 
 class Indexer:
-    def __init__(self, out_dict, out_postings, block_dir="block", block_size=500000) -> None:
+    def __init__(
+        self, out_dict, out_postings, block_dir="block", block_size=500000
+    ) -> None:
         """
         The posting files contains the serialized version of the posting lists.
         The dictionary file contains a serialized version of the term to pointer in the postings list.
@@ -172,15 +174,17 @@ class Indexer:
         #     os.remove(out_dict)
         # if os.path.exists(out_postings):
         #     os.remove(out_postings)
-        
+
     def index_collection(self, collection_dir):
-        token_stream = tokenize_collection(collection_dir, processing_fn=self.preprocess_text)
+        token_stream = tokenize_collection(
+            collection_dir, processing_fn=self.preprocess_text
+        )
         print("SPIMI Inverting...")
         num_blocks = self.spimi_invert(token_stream)
         print("SPIMI Inverting done.")
         self.merge_blocks(num_blocks, collection_dir)
         # Now to block-way merging
-    
+
     def spimi_invert(self, token_stream):
         def flush_dictionary():
             nonlocal dictionary, curr_block_number
@@ -188,17 +192,18 @@ class Indexer:
             self.flush_block(curr_block_number, sorted_dict)
             dictionary = defaultdict(list)
             curr_block_number += 1
-            
+
         import shutil
+
         if os.path.exists(self.block_dir):
             shutil.rmtree(self.block_dir)
         os.mkdir(self.block_dir)
-        
+
         # At the end of it, curr block number will indicate how many blocks were written to disk
         curr_block_number = 0
         # in-memory dictionary that will be flushed to disk
         dictionary = defaultdict(list)
-        
+
         for token in token_stream:
             docId, term = token.docId, token.term
             dictionary[term].append(docId)
@@ -208,8 +213,8 @@ class Indexer:
         if dictionary:
             flush_dictionary()
         return curr_block_number
-           
-    @staticmethod 
+
+    @staticmethod
     def sort_dictionary(dictionary: dict):
         """Dictionary is mapping from unsorted terms to unsorted list of docIds.
         We want to sort it into a sorted dictionary by terms and by docIds as seen in slide 22 of the lecture slides.
@@ -222,12 +227,11 @@ class Indexer:
             docIds = sorted(dictionary[term])
             new_dict[term] = docIds
         return new_dict
-    
-    
+
     def get_block_filename(self, block_id) -> str:
         """Helper method to obtain block filename given block id"""
         return os.path.join(self.block_dir, f"block_{block_id}.txt")
-    
+
     def flush_block(self, block_id: int, dict: dict):
         with open(self.get_block_filename(block_id), "w") as inf:
             for term, docIds in dict.items():
@@ -235,10 +239,12 @@ class Indexer:
 
     def merge_blocks(self, num_blocks: int, collection_dir: str):
         """Maintain num_block pointers to each block file and advance line by line"""
+
         def can_still_process(block_lines):
             # Stop processing when all are none
             result = not all(line is None for line in block_lines)
             return result
+
         # Let n = num_blocks
         # Create n file I/O objects
         block_files = []
@@ -269,7 +275,15 @@ class Indexer:
                 for i in range(num_blocks):
                     if terms[i] == smallest_term:
                         # Convert list str representation from text file to python list of ints
-                        doc_ids = [int(s) for s in block_lines[i].split(":")[-1].strip().replace("[", "").replace("]", "").split(", ")]
+                        doc_ids = [
+                            int(s)
+                            for s in block_lines[i]
+                            .split(":")[-1]
+                            .strip()
+                            .replace("[", "")
+                            .replace("]", "")
+                            .split(", ")
+                        ]
                         smallest_term_doc_ids.append(doc_ids)
                         # Advance the file reader, if there are no more lines to read
                         line = block_files[i].readline()
@@ -287,11 +301,11 @@ class Indexer:
                     posting_list.append(posting)
                 posting_list.add_skip_pointers()
 
-                # Write to out postings                
+                # Write to out postings
                 out_pf_ptr = out_pf.tell()
                 pl_data = pickle.dumps(posting_list)
                 out_pf.write(pl_data)
-                
+
                 # print to str for verification
                 # out_pf.write(str(posting_list))
 
@@ -307,7 +321,9 @@ class Indexer:
             out_pf_ptr = out_pf.tell()
             pl_data = pickle.dumps(universe_posting_list)
             out_pf.write(pl_data)
-            wpe = WordToPointerEntry(out_pf_ptr, len(pl_data), len(universe_posting_list))
+            wpe = WordToPointerEntry(
+                out_pf_ptr, len(pl_data), len(universe_posting_list)
+            )
             self.word_to_pointer_dict[UNIVERSE] = wpe
         # Remember to close them all
         for block_file in block_files:
@@ -435,7 +451,7 @@ def build_index(in_dir, out_dict, out_postings):
     A = indexer.get_full_postings()
     print(sys.getsizeof(A))
     MEMORY_LIMIT = int(1e6)
-    
+
     # Try with SPIMI
     indexer = Indexer(out_dict, out_postings)
     indexer.index_collection(in_dir)
@@ -447,9 +463,9 @@ def build_index(in_dir, out_dict, out_postings):
     #             indexer.dictionary = {}
     B = indexer.get_full_postings()
     print(sys.getsizeof(B))
-    
+
     # # Compare
-    
+
     print(A == B)
     with open("debug.txt", "w") as outf:
         outf.write("Checking A\n")

@@ -8,7 +8,6 @@ from index import WordToPointerEntry, PostingsList, Posting
 
 import math
 import re
-import nltk
 import sys
 import getopt
 
@@ -114,8 +113,7 @@ def shunting(tokens):
             result_stack.append(operator_stack.pop())
 
     PRECEDENCE = {
-        "NOT": 4,
-        "AND NOT": 3,
+        "NOT": 3,
         "AND": 2,
         "OR": 1,
     }
@@ -127,9 +125,6 @@ def shunting(tokens):
         token = tokens[i]
         if token.upper() in operators:
             token = token.upper()
-            if token == "AND" and tokens[i + 1].upper() == "NOT":
-                token = "AND NOT"
-                i += 1
             if operator_stack and PRECEDENCE[operator_stack[-1]] > PRECEDENCE[token]:
                 flush()
             operator_stack.append(token)
