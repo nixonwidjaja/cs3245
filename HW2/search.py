@@ -183,7 +183,7 @@ def parse_query(query, preprocessing_fn: callable):
     query = preprocessing_fn(query)
     if isinstance(query, list):
         query = " ".join(query)
-    print(query)
+    print("Query after preprocessing is: " + query)
     return shunting(split(query))
     # return optimize_ast(shunting(split(query)))
 
@@ -468,37 +468,17 @@ def run_search(dict_file, postings_file, queries_file, results_file):
     perform searching on the given queries file and output the results to a file
     """
     print("running search on the queries...")
-    # q = "bill OR Gates AND (vista OR XP) AND NOT mac"
-    # print(parse_query(q))
-    # # We cannot read the whole posting files into memory
-    # query = "american OR analyst"
     indexer = Indexer(dict_file, postings_file)
     indexer.load()
-    # with open("lala.txt", "w") as outf:
-    # query = indexer.preprocess_text(query)
-    # with open("american.txt", "w") as outf:
-    #     pl = indexer.get_posting_list("american")
-    #     outf.write(str(pl))
-    # with open("analyst.txt", "w") as outf:
-    #     pl = indexer.get_posting_list("analyst")
-    #     outf.write(str(pl))
-    # query = " ".join(indexer.preprocess_text(query))
-    # query = parse_query(query)
-    # results = naive_evaluation(indexer, query)
-    # print(results)
     with open(results_file, "w") as outf, open(queries_file, "r") as inf:
-        # Process each query and write to file
         num_queries = 0
         while True:
             query = inf.readline().strip()
             print("OG Query is : " + query)
-            # query = " ".join(indexer.preprocess_text(query))
             if not query:
                 break
-            print(query)
             query = parse_query(query, indexer.preprocess_text)
             results = naive_evaluation(indexer, query)
-            print(results)
             outf.write(results + "\n")
             num_queries += 1
         print(f"Handled {num_queries} queries")

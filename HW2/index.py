@@ -139,13 +139,17 @@ def tokenize_document(docId, path, processing_fn):
             yield DocumentStreamToken(token, docId)
 
 
-def tokenize_collection(dir, processing_fn, debug=False):
+def tokenize_collection(dir, processing_fn, debug=True):
     for file in os.listdir(dir):
         path = os.path.join(dir, file)
         # Assume that doc id is name of file
         docId = int(file)
+        # Create debug dir if no exist
+        debug_dir = "debug"
+        if not os.path.exists(debug_dir):
+            os.makedirs(debug_dir)
         if debug:
-            with open(f"debug_{file}.txt", "w") as outf:
+            with open(f"{debug_dir}/debug_{file}.txt", "w") as outf:
                 outf.write(str(list(tokenize_document(docId, path, processing_fn))))
         for token in tokenize_document(docId, path, processing_fn):
             yield token
