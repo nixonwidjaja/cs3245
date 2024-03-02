@@ -189,7 +189,7 @@ def tokenize_collection(dir, processing_fn, debug=False):
 
 class Indexer:
     def __init__(
-        self, out_dict, out_postings, block_dir="block", block_size=500000, use_binary=True
+        self, out_dict, out_postings, block_dir="block", block_size=500000, use_binary=False
     ) -> None:
         """
         The posting files contains the serialized version of the posting lists.
@@ -380,7 +380,10 @@ class Indexer:
         Move to own static method to standardize across.
         """
         text = text.lower()
-        words = nltk.word_tokenize(text)
+        sentences = nltk.sent_tokenize(text)
+        words = []
+        for sent in sentences:
+            words.extend(nltk.word_tokenize(sent))
         singles = [self.stemmer.stem(w, to_lowercase=True) for w in words]
         return singles
 

@@ -11,6 +11,7 @@ import nltk
 import re
 import sys
 import getopt
+import time
 
 
 def usage():
@@ -34,6 +35,7 @@ def split(q, stemmer: nltk.stem.PorterStemmer):
     as a single token.
     We are also splitting by keywords AND, OR, NOT to separate the tokens.
     For example, queries such as 'bunny balls' should be counted as a single token.
+    Returns None if invalid
     """
     q = re.sub(r"[(]", "( ", q)
     q = re.sub(r"[)]", " )", q)
@@ -246,6 +248,9 @@ def apply_not(pl: PostingsList, universe: PostingsList) -> PostingsList:
 """
 Evaluation methods
 """
+# We are using a posting lists to avoid reading from disk the same query two times.
+# One thing to note: we avoid mutating the list itself in our boolean operations and only add the value to the result
+# list. This is to avoid subtle bugs that may arise.
 posting_lists = {}
 
 
@@ -359,7 +364,7 @@ def naive_evaluation(indexer: Indexer, query: list[str]):
     """
 
     def get_posting_list(term):
-        if isinstance(term, list):
+        if isinstance(term, PostingsList):
             return term
         elif isinstance(term, str):
             return indexer.get_posting_list(term)
@@ -402,8 +407,16 @@ def naive_evaluation(indexer: Indexer, query: list[str]):
     return results
 
 
+def naive_search(query: str, indexer: Indexer, stemmer: nltk.stem.PorterStemmer) -> str:
+    splitted = split(query, stemmer)
+    if splitted is None:
+        return ""
+    query_list = shunting(splitted)
+    return naive_evaluation(indexer, query_list)
+
 def search(query: str, indexer: Indexer, stemmer: nltk.stem.PorterStemmer) -> str:
     splitted = split(query, stemmer)
+    print("New query is " + str(splitted))
     if splitted is None:
         return ""
     query_list = shunting(splitted)
@@ -423,14 +436,34 @@ def run_search(dict_file, postings_file, queries_file, results_file):
         num_queries = 0
         while True:
             query = inf.readline().strip()
-            print("OG Query is : " + query)
+            print(f"{num_queries}: OG Query is : " + query)
             if not query:
                 break
             results = search(query, indexer, stemmer)
+            # results = naive_search(query, indexer, stemmer)
             outf.write(results + "\n")
             num_queries += 1
         print(f"Handled {num_queries} queries")
 
+
+def evaluate_runtime(dict_file, postings_file, queries_file, search_fn, num_iterations=100):
+    indexer = Indexer(dict_file, postings_file)
+    stemmer = nltk.stem.PorterStemmer()
+    indexer.load()
+    total_time_taken = 0
+    for _ in range(num_iterations):
+        with open(queries_file, "r") as qf:
+            start = time.time()
+            while True:
+                query = qf.readline().strip()
+                if not query:
+                    break
+                _ = search_fn(query, indexer, stemmer)
+            elapsedTime = time.time() - start
+            total_time_taken += elapsedTime
+    average_time_taken = total_time_taken / num_iterations
+    print(f"Took {average_time_taken} seconds on average")
+    
 
 dictionary_file = postings_file = file_of_queries = output_file_of_results = None
 
@@ -462,3 +495,7 @@ if (
     sys.exit(2)
 
 run_search(dictionary_file, postings_file, file_of_queries, file_of_output)
+# print("Evaluating 'optimal' search")
+# evaluate_runtime(dictionary_file, postings_file, file_of_queries, search_fn=search)
+# print("Evaluating 'naive' search")
+# evaluate_runtime(dictionary_file, postings_file, file_of_queries, search_fn=naive_search)
