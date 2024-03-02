@@ -1,9 +1,9 @@
-This is the README file for A0000000X's submission
-Email(s): e0000000@u.nus.edu
+This is the README file for A0236430N-A0235410W's submission
+Email(s): e0000000@u.nus.edu, e0727410@u.nus.edu
 
 == Python Version ==
 
-I'm (We're) using Python Version <3.10.12 or replace version number> for
+I'm (We're) using Python Version 3.10.12 for
 this assignment.
 
 == General Notes about this assignment ==
@@ -11,6 +11,14 @@ this assignment.
 Give an overview of your program, describe the important algorithms/steps 
 in your program, and discuss your experiments in general.  A few paragraphs 
 are usually sufficient.
+
+Our Boolean Retrieval indexing system comprises of two main components, the indexing and the searching.
+
+Our indexing makes use of the Single-pass in-memory indexing (SPIMI) technique. Given an input directory that comprises of documents identified by an integer, we use NLTK's word_tokenize and PorterStemmer techniques to tokenize the documents into a token stream. We then lazily iterate over each token and build up our Index, writing the dictionary and posting list to a new block file when our memory limit is reached. After successfully writing all tokens to the hard disk, we apply n-way merging on all the blocks to generate our final dictionary and postings file, making sure to add skip pointers to each posting list for faster search as well as posting list size for subsequent optimisation. We also create an additional posting list to represent the textual corpus to handle NOT queries easier.
+
+In our search algorithm, we apply the same text preprocessing techniques on all queries to standardize the queries with the corpus. We then use the Shunting-Yard algorithm to parse the textual query into a valid boolean postfix syntax and apply the skip pointer, sorting by smallest intermediate result for and queries.
+
+We approached our development incrementally, first starting with a completely in-memory indexing technique as our source of truth to validate our SPIMI implementation. We then validated our search algorithm by manually tracing through on a small subset of Reuters to validate the correctness of our search algorithm. We further discussed with our fellow peers on Piazza.
 
 == Files included with this submission ==
 
@@ -22,7 +30,7 @@ and formatted correctly.
 
 Please put a "x" (without the double quotes) into the bracket of the appropriate statement.
 
-[ ] I/We, A0000000X, certify that I/we have followed the CS 3245 Information
+[X] We, A0236430N-A0235410W, certify that I/we have followed the CS 3245 Information
 Retrieval class guidelines for homework assignments.  In particular, I/we
 expressly vow that I/we have followed the Facebook rule in discussing
 with others in doing the assignment and did not take notes (digital or
@@ -41,3 +49,6 @@ We suggest that we should be graded as follows:
 
 <Please list any websites and/or people you consulted with for this
 assignment and state their role>
+
+Piazza - Jed, Malcom, Kenneth, Zhao Jin
+The Online IR textbook
