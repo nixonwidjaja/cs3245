@@ -23,48 +23,6 @@ def usage():
 """
 BOOLEAN EXPRESSION PARSING
 """
-# FIXME: Temporary ? There is probably a better way to structure the query tree
-
-
-class AND:
-    def __init__(self, queries):
-        self.queries = queries
-
-    def add(self, query):
-        self.queries.append(query)
-        return self
-
-    def __repr__(self):
-        return "AND [ " + str(self.queries) + " ] "
-
-
-class OR:
-    def __init__(self, queries):
-        self.queries = queries
-
-    def add(self, query):
-        self.queries.append(query)
-        return self
-
-    def __repr__(self):
-        return "OR [ " + str(self.queries) + " ] "
-
-
-class AND_NOT:
-    def __init__(self, AND, NOT):
-        self.AND = AND
-        self.NOT = NOT
-
-    def __repr__(self):
-        return f"[{self.AND}] AND NOT [{self.NOT}]"
-
-
-class NOT:
-    def __init__(self, query):
-        self.query = query
-
-    def __repr__(self):
-        return f"NOT [ {self.query} ] "
 
 
 def split(q):
@@ -141,43 +99,6 @@ def shunting(tokens):
     return result_stack
 
 
-def optimize_ast(query):
-    """
-    Right now, this is very makeshift and mostly uses my own algorithm which may or
-    may not work well, or even correctly but it's a trial and error thing at the moment.
-    We assume that the query is already in postfix notation.
-    Assumes that it is in the postfix notation.
-    Clearly, we want to combine all terms in the AND operand.
-    """
-    print("Optimizing " + str(query))
-    operand_stack = []
-    for token in query:
-        if token in ["AND", "OR", "AND NOT"]:
-            s1 = operand_stack.pop()
-            s2 = operand_stack.pop()
-            if token == "AND":
-                if isinstance(s1, AND):
-                    operand_stack.append(s1.add(s2))
-                elif isinstance(s2, AND):
-                    operand_stack.append(s2.add(s1))
-                else:
-                    operand_stack.append(AND([s1, s2]))
-            elif token == "OR":
-                if isinstance(s1, OR):
-                    operand_stack.append(s1.add(s2))
-                else:
-                    operand_stack.append(OR([s1, s2]))
-            else:  # token == "AND NOT":
-                operand_stack.append(AND_NOT(AND=s2, NOT=s1))
-        elif token in ["NOT"]:
-            s1 = operand_stack.pop()
-            operand_stack.append(NOT(s1))
-        else:
-            operand_stack.append(token)
-    assert len(operand_stack) == 1
-    return operand_stack[0]
-
-
 def parse_query(query, preprocessing_fn: callable):
     """Given a boolean query, convert it into an optimized ast"""
     query = preprocessing_fn(query)
@@ -185,7 +106,6 @@ def parse_query(query, preprocessing_fn: callable):
         query = " ".join(query)
     print("Query after preprocessing is: " + query)
     return shunting(split(query))
-    # return optimize_ast(shunting(split(query)))
 
 
 """
@@ -368,7 +288,6 @@ class Or:
 
     def evaluate(self, indexer: Indexer):
         res = [term.evaluate(indexer) for term in self.terms]
-        # res.sort(key=lambda x: len(x)) Should we sort?
         ans = res[0]
         for i in range(1, len(res)):
             ans = apply_or(ans, res[i])
@@ -418,7 +337,6 @@ def opt_eval(indexer: Indexer, query: list[str]):
         else:  # regular term
             stack.append(Term(term))
     ans = stack[0].evaluate(indexer)
-    # assert isinstance(ans, PostingsList)
     ans = [str(posting.value) for posting in ans.plist]
     return " ".join(ans)
 
