@@ -7,6 +7,7 @@ from index import Indexer, UNIVERSE
 from index import WordToPointerEntry, PostingsList, Posting
 
 import math
+import nltk
 import re
 import sys
 import getopt
@@ -25,7 +26,7 @@ BOOLEAN EXPRESSION PARSING
 """
 
 
-def split(q):
+def split(q, stemmer: nltk.stem.PorterStemmer):
     """
     Split the query into their individual tokens.
     We are adding whitespaces between the parentheses to make it easy to recursively
@@ -37,17 +38,20 @@ def split(q):
     q = re.sub(r"[(]", "( ", q)
     q = re.sub(r"[)]", " )", q)
     tokens = q.split()
+    new_tokens = []
     regular_term_count = 0
-    if tokens[0] in ["AND", "OR", "NOT"] or tokens[-1] in ["AND", "OR", "NOT"]:
+    if tokens[0] in ["AND", "OR"] or tokens[-1] in ["AND", "OR", "NOT"]:
         return None
     for token in tokens:
-        if token.upper() not in ["AND", "OR", "NOT", "(", ")"]:
+        if token.upper() in ["AND", "OR", "NOT", "(", ")"]:
+            regular_term_count = 0
+            new_tokens.append(token.upper())
+        else:
             regular_term_count += 1
             if regular_term_count > 1:
                 return None
-        else:
-            regular_term_count = 0
-    return tokens
+            new_tokens.append(stemmer.stem(token.lower(), to_lowercase=True))
+    return new_tokens
 
 
 def shunting(tokens) -> list[str]:
@@ -434,8 +438,8 @@ def naive_evaluation(indexer: Indexer, query: list[str]):
     return results
 
 
-def search(query: str, indexer: Indexer) -> str:
-    splitted = split(query)
+def search(query: str, indexer: Indexer, stemmer: nltk.stem.PorterStemmer) -> str:
+    splitted = split(query, stemmer)
     if splitted is None:
         return ""
     query_list = shunting(splitted)
@@ -449,6 +453,7 @@ def run_search(dict_file, postings_file, queries_file, results_file):
     """
     print("running search on the queries...")
     indexer = Indexer(dict_file, postings_file)
+    stemmer = nltk.stem.PorterStemmer()
     indexer.load()
     with open(results_file, "w") as outf, open(queries_file, "r") as inf:
         num_queries = 0
@@ -457,7 +462,7 @@ def run_search(dict_file, postings_file, queries_file, results_file):
             print("OG Query is : " + query)
             if not query:
                 break
-            results = search(query, indexer)
+            results = search(query, indexer, stemmer)
             outf.write(results + "\n")
             num_queries += 1
         print(f"Handled {num_queries} queries")
