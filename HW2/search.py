@@ -97,43 +97,6 @@ def shunting(tokens) -> list[str]:
     return result_stack
 
 
-def optimize_ast(query):
-    """
-    Right now, this is very makeshift and mostly uses my own algorithm which may or
-    may not work well, or even correctly but it's a trial and error thing at the moment.
-    We assume that the query is already in postfix notation.
-    Assumes that it is in the postfix notation.
-    Clearly, we want to combine all terms in the AND operand.
-    """
-    print("Optimizing " + str(query))
-    operand_stack = []
-    for token in query:
-        if token in ["AND", "OR", "AND NOT"]:
-            s1 = operand_stack.pop()
-            s2 = operand_stack.pop()
-            if token == "AND":
-                if isinstance(s1, AND):
-                    operand_stack.append(s1.add(s2))
-                elif isinstance(s2, AND):
-                    operand_stack.append(s2.add(s1))
-                else:
-                    operand_stack.append(AND([s1, s2]))
-            elif token == "OR":
-                if isinstance(s1, OR):
-                    operand_stack.append(s1.add(s2))
-                else:
-                    operand_stack.append(OR([s1, s2]))
-            else:  # token == "AND NOT":
-                operand_stack.append(AND_NOT(AND=s2, NOT=s1))
-        elif token in ["NOT"]:
-            s1 = operand_stack.pop()
-            operand_stack.append(NOT(s1))
-        else:
-            operand_stack.append(token)
-    assert len(operand_stack) == 1
-    return operand_stack[0]
-
-
 def parse_query(query, preprocessing_fn: callable):
     """Given a boolean query, convert it into an optimized ast using shunting and return nothing if it's
     an illegal query term i.e. words with spaces."""
@@ -142,12 +105,12 @@ def parse_query(query, preprocessing_fn: callable):
         query = " ".join(query)
     print("Query after preprocessing is: " + query)
     return shunting(split(query))
-    # return optimize_ast(shunting(split(query)))
 
 
 """
 BOOLEAN OPERATORS
 """
+
 
 def convert_posting_to_list(result: list[int]) -> PostingsList:
     """need to recreate the Posting"""
@@ -315,7 +278,6 @@ class And:
 
     def evaluate(self, indexer: Indexer):
         res = [term.evaluate(indexer) for term in self.terms]
-        # print(res)
         res.sort(key=lambda x: len(x))
         ans = res[0]
         for i in range(1, len(res)):
