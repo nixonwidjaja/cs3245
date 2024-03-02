@@ -14,7 +14,17 @@ import sys
 class Posting:
     def __init__(self, value) -> None:
         self.value: int = value
+        self.next = None
+        # The skip idx in the list
         self.skip: int = None
+        # The skip ptr itself, which will only be initialised for search
+        self.skip_ptr: Posting = None
+        
+    def set_next(self, other: "Posting"):
+        self.next = other
+        
+    def set_skip(self, skip: int):
+        self.skip = skip
 
     def __lt__(self, other):
         return self.value < other.value
@@ -35,8 +45,14 @@ class Posting:
         return self.value != other.value
 
     def __repr__(self):
-        return f"(value = {self.value} skip = {self.skip})"
-
+        if self.has_skip() and self.next is not None:
+            return f"(value = {self.value} next = {self.next.value} skip = {self.skip} skip_ptr = {self.skip_ptr.value})"
+        elif self.next is not None:
+            return f"(value = {self.value} next = {self.next.value} skip = {self.skip} skip_ptr = None)"
+        else:
+            return f"(value = {self.value} next = None skip = {self.skip} skip_ptr = None)"
+            
+        
     def has_skip(self):
         return self.skip is not None
 
@@ -72,12 +88,28 @@ class PostingsList:
         self.plist.append(value)
 
     def add_skip_pointers(self):
+        """Add skip pointers for disk writing"""
         self.plist = sorted(list(set(self.plist)), key=lambda p: p.value)
         skips = round(math.sqrt(len(self.plist)))
         step = len(self.plist) // skips
         for i in range(0, len(self.plist), step):
             if i + step < len(self.plist):
                 self.plist[i].skip = i + step
+                
+    def initialise_linked_list(self) -> Posting:
+        """Convert to linked list"""
+        if len(self.plist) == 0:
+            return None
+        head_posting: Posting = self.plist[0]
+        curr_posting: Posting = head_posting
+        for i in range(1, len(self.plist)):
+            next_posting = self.plist[i]
+            curr_posting.set_next(next_posting)
+            if curr_posting.has_skip():
+                curr_posting.skip_ptr = self.plist[curr_posting.skip]
+            curr_posting = next_posting
+        curr_posting.next = None
+        return head_posting
 
     def merge(self, other):
         self.plist.extend(other.plist)
