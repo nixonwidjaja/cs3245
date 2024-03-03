@@ -34,14 +34,17 @@ def split(q, stemmer: nltk.stem.PorterStemmer):
     shunting yard on the expression later so that the parentheses themselves count
     as a single token.
     We are also splitting by keywords AND, OR, NOT to separate the tokens.
-    For example, queries such as 'bunny balls' should be counted as a single token.
+    2-word terms such as 'bunny balls' should be counted as invalid.
     Returns None if invalid
     """
     q = re.sub(r"[(]", "( ", q)
     q = re.sub(r"[)]", " )", q)
+    # Split each query into words
     tokens = q.split()
     new_tokens = []
+    # To count the number of consecutive regular terms
     regular_term_count = 0
+    # Reject if operators located at invalid positions
     if tokens[0] in ["AND", "OR"] or tokens[-1] in ["AND", "OR", "NOT"]:
         return None
     for token in tokens:
@@ -49,9 +52,11 @@ def split(q, stemmer: nltk.stem.PorterStemmer):
             regular_term_count = 0
             new_tokens.append(token.upper())
         else:
+            # If detected 2 consecutive regular terms, reject the query
             regular_term_count += 1
             if regular_term_count > 1:
                 return None
+            # Use stemming to match the preprocessing of index
             new_tokens.append(stemmer.stem(token.lower(), to_lowercase=True))
     return new_tokens
 
@@ -65,6 +70,7 @@ def shunting(tokens) -> list[str]:
     operator_stack = []
     result_stack = []
 
+    # Set operator precedence
     PRECEDENCE = {
         "NOT": 3,
         "AND": 2,
@@ -95,23 +101,13 @@ def shunting(tokens) -> list[str]:
     return result_stack
 
 
-def parse_query(query, preprocessing_fn: callable):
-    """Given a boolean query, convert it into an optimized ast using shunting and return nothing if it's
-    an illegal query term i.e. words with spaces."""
-    query = preprocessing_fn(query)
-    if isinstance(query, list):
-        query = " ".join(query)
-    print("Query after preprocessing is: " + query)
-    return shunting(split(query))
-
-
 """
 BOOLEAN OPERATORS
 """
 
 
 def convert_posting_to_list(result: list[int]) -> PostingsList:
-    """need to recreate the Posting"""
+    """Converts list of doc IDs to PostingsList"""
     pl = PostingsList()
     pl.plist = [Posting(docId) for docId in result]
     return pl
@@ -123,9 +119,7 @@ def reapply_skip_pointers(pl: PostingsList) -> PostingsList:
     no longer be valid as it is possible we take a posting from one
     posting list that points to an invalid index!
     We will apply a linear time reapplication of the skip pointers.
-    There is no need to sort because we did our intersection in ascending order
-    anyways.
-    We will not be reusing PostingLists add skip pointers because we don't need to sort again
+    There is no need to sort because we process posting lists in ascending order.
     """
     for p in pl:
         p.skip = None
@@ -143,7 +137,8 @@ def apply_and(pl1: PostingsList, pl2: PostingsList) -> PostingsList:
     """
     Apply the AND operation on term 1 and term 2 using low level operations.
     We assume that the posting list file for both term exists.
-    Make use of skip pointers whenever possible
+    Make use of skip pointers whenever possible.
+    Returns the intersection of term 1 and term 2's posting lists.
     """
     p1 = pl1.initialise_linked_list()
     p2 = pl2.initialise_linked_list()
@@ -180,7 +175,8 @@ def apply_or(pl1: PostingsList, pl2: PostingsList) -> PostingsList:
     """
     Apply the OR operation on term 1 and term 2 using low level operations.
     We assume that the posting list file for both term exists.
-    Skip pointers are useless for or
+    Skip pointers are useless for OR.
+    Returns the union of term 1 and term 2's posting lists.
     """
     p1 = p2 = 0  # Pointers to each posting list
     p1 = pl1.initialise_linked_list()
@@ -211,6 +207,7 @@ def apply_and_not(pl1: PostingsList, pl2: PostingsList) -> PostingsList:
     Apply the term1 AND NOT term2
     term1: 1 2 3 4 5
     term2: 2 3
+    result: 1 4 5
     """
     p1 = pl1.initialise_linked_list()
     p2 = pl2.initialise_linked_list()
@@ -237,7 +234,7 @@ def apply_and_not(pl1: PostingsList, pl2: PostingsList) -> PostingsList:
 
 
 def apply_not(pl: PostingsList, universe: PostingsList) -> PostingsList:
-    """Get all terms in universe AND NOT pl"""
+    """Apply the NOT operation to a posting list by applying UNIVERSE AND NOT term"""
     return apply_and_not(universe, pl)
 
 
@@ -251,6 +248,10 @@ posting_lists = {}
 
 
 class Term:
+    """
+    Term abstraction that evaluates to the posting list of the term.
+    """
+
     def __init__(self, term) -> None:
         self.term = term
 
@@ -264,6 +265,11 @@ class Term:
 
 
 class Not:
+    """
+    Not abstraction of Not(Term) that evaluates to the posting list of
+    the result of 'NOT term'.
+    """
+
     def __init__(self, term: Term) -> None:
         self.term = term
 
@@ -276,6 +282,11 @@ class Not:
 
 
 class And:
+    """
+    And abstraction of And([terms]) that evaluates to the posting list of
+    the result of terms[0] AND terms[1] AND ... AND terms[n-1].
+    """
+
     def __init__(self, terms) -> None:
         self.terms = terms
 
@@ -295,6 +306,11 @@ class And:
 
 
 class Or:
+    """
+    Or abstraction of Or([terms]) that evaluates to the posting list of
+    the result of terms[0] OR terms[1] OR ... OR terms[n-1].
+    """
+
     def __init__(self, terms) -> None:
         self.terms = terms
 
@@ -311,15 +327,21 @@ class Or:
 
 
 def opt_eval(indexer: Indexer, query: list[str]):
-    # DOES NOT ACCOUNT FOR (AND NOT): ONLY AND, OR, NOT
+    """
+    Optimised query evaluation that groups ANDs and sort in order of posting list length.
+    Query is assumed to be postfix notation after Shunting Yard.
+    """
     # Make sure to reset posting_lists everytime
     posting_lists.clear()
+    # posting_lists stores posting lists of one query in memory in case a query uses the same term twice
     posting_lists[UNIVERSE] = indexer.get_posting_list(UNIVERSE)
     stack = []
     for term in query:
         if term == "AND":
+            # Get the topmost 2 terms
             a = stack.pop()
             b = stack.pop()
+            # Combine to a single And()
             if isinstance(a, And) and isinstance(b, And):
                 stack.append(And(a.terms + b.terms))
             elif isinstance(a, And):
@@ -331,8 +353,10 @@ def opt_eval(indexer: Indexer, query: list[str]):
             else:
                 stack.append(And([a, b]))
         elif term == "OR":
+            # Get the topmost 2 terms
             a = stack.pop()
             b = stack.pop()
+            # Combine to a single Or()
             if isinstance(a, Or) and isinstance(b, Or):
                 stack.append(Or(a.terms + b.terms))
             elif isinstance(a, Or):
@@ -344,19 +368,22 @@ def opt_eval(indexer: Indexer, query: list[str]):
             else:
                 stack.append(Or([a, b]))
         elif term == "NOT":
+            # Get the topmost term and apply Not()
             top = stack.pop()
             stack.append(Not(top))
         else:  # regular term
             stack.append(Term(term))
+    # Evaluate the final term which will recursively evaluate its term contents
     ans = stack[0].evaluate(indexer)
+    # Convert the final posting list into string result
     ans = [str(posting.value) for posting in ans.plist]
     return " ".join(ans)
 
 
 def naive_evaluation(indexer: Indexer, query: list[str]):
     """
-    The most baseline evaluation that operates according to Shunting.
-    This is thus therefore highly likely to be correct.
+    The most baseline evaluation that operates according to Shunting Yard.
+    Query is assumed to be in postfix notation.
     """
 
     def get_posting_list(term):
@@ -370,6 +397,7 @@ def naive_evaluation(indexer: Indexer, query: list[str]):
     operand_stack = []
     for token in query:
         if token in ["AND", "OR", "AND NOT"]:
+            # If current token is an operator, get 2 topmost token and apply the operator
             s1 = operand_stack.pop()
             pl1 = get_posting_list(s1)
 
@@ -386,7 +414,7 @@ def naive_evaluation(indexer: Indexer, query: list[str]):
                 results = apply_and_not(pl2, pl1)
             results = reapply_skip_pointers(results)
             operand_stack.append(results)
-        elif token in ["NOT"]:
+        elif token == "NOT":
             s = operand_stack.pop()
             pl = get_posting_list(s)
             universe = indexer.get_posting_list(UNIVERSE)
@@ -404,18 +432,26 @@ def naive_evaluation(indexer: Indexer, query: list[str]):
 
 
 def naive_search(query: str, indexer: Indexer, stemmer: nltk.stem.PorterStemmer) -> str:
+    # Split the query into operators and regular terms, stem regular terms
     splitted = split(query, stemmer)
+    # If invalid query, reject and return ""
     if splitted is None:
         return ""
+    # Apply Shunting Yard to splitted query to get postfix notation
     query_list = shunting(splitted)
+    # Apply naive evaluation to postfix query
     return naive_evaluation(indexer, query_list)
 
 
 def search(query: str, indexer: Indexer, stemmer: nltk.stem.PorterStemmer) -> str:
+    # Split the query into operators and regular terms, stem regular terms
     splitted = split(query, stemmer)
+    # If invalid query, reject and return ""
     if splitted is None:
         return ""
+    # Apply Shunting Yard to splitted query to get postfix notation
     query_list = shunting(splitted)
+    # Apply optimised evaluation to postfix query
     return opt_eval(indexer, query_list)
 
 
@@ -425,18 +461,23 @@ def run_search(dict_file, postings_file, queries_file, results_file):
     perform searching on the given queries file and output the results to a file
     """
     print("running search on the queries...")
+    # Initialize indexer and PorterStemmer
     indexer = Indexer(dict_file, postings_file)
     stemmer = nltk.stem.PorterStemmer()
+    # Load dictionary mapping of token to file pointer from dict_file
     indexer.load()
     with open(results_file, "w") as outf, open(queries_file, "r") as inf:
         num_queries = 0
         while True:
+            # Read a single line of query
             query = inf.readline().strip()
             print(f"{num_queries}: OG Query is : " + query)
             if not query:
                 break
+            # Perform naive search or optimised search
             results = search(query, indexer, stemmer)
             # results = naive_search(query, indexer, stemmer)
+            # Write the result to results_file
             outf.write(results + "\n")
             num_queries += 1
         print(f"Handled {num_queries} queries")
@@ -492,10 +533,10 @@ if (
     usage()
     sys.exit(2)
 
-# run_search(dictionary_file, postings_file, file_of_queries, file_of_output)
-print("Evaluating 'optimal' search")
-evaluate_runtime(dictionary_file, postings_file, file_of_queries, search_fn=search)
-print("Evaluating 'naive' search")
-evaluate_runtime(
-    dictionary_file, postings_file, file_of_queries, search_fn=naive_search
-)
+run_search(dictionary_file, postings_file, file_of_queries, file_of_output)
+# print("Evaluating 'optimal' search")
+# evaluate_runtime(dictionary_file, postings_file, file_of_queries, search_fn=search)
+# print("Evaluating 'naive' search")
+# evaluate_runtime(
+#     dictionary_file, postings_file, file_of_queries, search_fn=naive_search
+# )

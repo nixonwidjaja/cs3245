@@ -202,8 +202,8 @@ class Indexer:
         The dictionary file contains a serialized version of the term to pointer in the postings list.
         When we run SPIMI, we will create a block file of each term to list of docIds.
         Default to 0.5MB for the block size
-        Note that use_Binary=False is purely for debugging and will not work with loading at the moment cos deserialization would
-        be slightly harder to write.
+        Note that use_Binary=False is purely for debugging and will not work with loading at the moment
+        as deserialization would be slightly harder to write.
         """
         self.stemmer = nltk.stem.PorterStemmer()
         self.dictionary = {}
@@ -387,21 +387,23 @@ class Indexer:
         return sys.getsizeof(self.dictionary)
 
     def preprocess_text(self, text: str) -> list[str]:
-        """
-        Preprocessing done for indexing as well as searching.
-        Move to own static method to standardize across.
-        """
+        """Preprocess a given text"""
+        # Convert text to lowercase and tokenize to sentences.
         text = text.lower()
         sentences = nltk.sent_tokenize(text)
         words = []
         for sent in sentences:
+            # Word tokenize each sentence
             words.extend(nltk.word_tokenize(sent))
+        # Apply stemming to each word and ensure convert to lowercase
         singles = [self.stemmer.stem(w, to_lowercase=True) for w in words]
         return singles
 
     def index(self, file: str, doc_id: int):
+        # Read file and convert text to lowercase
         with open(file, "r") as f:
             text = f.read().lower()
+        # Preprocess the text to tokens
         singles = set(self.preprocess_text(text))
         for s in singles:
             if s not in self.dictionary:
@@ -423,47 +425,6 @@ class Indexer:
                 )
         with open(self.out_dict, "wb") as f:
             pickle.dump(self.word_to_pointer_dict, f)
-
-    def spimi(self):
-        print("spimi")
-        temp_file = "temp.txt"
-        # Move the current postings file to a temporary file
-        if os.path.exists(temp_file):
-            os.remove(temp_file)
-        if os.path.exists(self.out_postings):
-            os.rename(self.out_postings, temp_file)
-        if os.path.exists(self.out_dict):
-            self.load()
-        # Initialize new word to pointer dict to store new pointers
-        new_word_to_pointer_dict = {}
-        # Collect a set of all words (in memory and temp_file)
-        words = set(self.word_to_pointer_dict.keys())
-        words = words.union(set(self.dictionary.keys()))
-        # Write to out_postings the updated index
-        with open(self.out_postings, "wb") as f:
-            for word in words:
-                # Get old posting list (in temp_file)
-                old_list = self.get_posting_list(word, temp_file)
-                # Get new posting list (in memory)
-                new_list = self.dictionary.get(word, PostingsList())
-                # Merge old and new posting lists
-                old_list.merge(new_list)
-                # Get current pointer in out_postings
-                pointer = f.tell()
-                # Write byte data to out_postings and store the pointer to dict
-                data = pickle.dumps(old_list)
-                f.write(data)
-                new_word_to_pointer_dict[word] = WordToPointerEntry(
-                    pointer, len(data), len(old_list)
-                )
-        # Reset dicts for next iteration
-        self.dictionary = {}
-        # Write word_to_pointer_dict to out_dict file
-        with open(self.out_dict, "wb") as f:
-            pickle.dump(new_word_to_pointer_dict, f)
-        # Remove temp_file
-        if os.path.exists(temp_file):
-            os.remove(temp_file)
 
     def load(self):
         with open(self.out_dict, "rb") as f:
