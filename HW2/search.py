@@ -310,10 +310,6 @@ def apply_not(pl: PostingsList, universe: PostingsList) -> PostingsList:
 """
 Evaluation methods
 """
-# We are using a posting lists to avoid reading from disk the same query two times.
-# One thing to note: we avoid mutating the list itself in our boolean operations and only
-# add the value to the result list. This is to avoid subtle bugs that may arise.
-posting_lists = {}
 
 
 class Term:
@@ -325,9 +321,7 @@ class Term:
         self.term = term
 
     def evaluate(self, indexer: Indexer):
-        if self.term not in posting_lists:
-            posting_lists[self.term] = indexer.get_posting_list(self.term)
-        return posting_lists[self.term]
+        return indexer.get_posting_list(self.term)
 
     def __repr__(self):
         return str(self.term)
@@ -343,7 +337,7 @@ class Not:
         self.term = term
 
     def evaluate(self, indexer: Indexer):
-        ans = apply_not(self.term.evaluate(indexer), posting_lists[UNIVERSE])
+        ans = apply_not(self.term.evaluate(indexer), indexer.get_posting_list(UNIVERSE))
         return reapply_skip_pointers(ans)
 
     def __repr__(self):
@@ -400,10 +394,6 @@ def opt_eval(indexer: Indexer, query: list[str]):
     Optimised query evaluation that groups ANDs and sort in order of posting list length.
     Query is assumed to be postfix notation after Shunting Yard.
     """
-    # Make sure to reset posting_lists everytime
-    posting_lists.clear()
-    # posting_lists stores posting lists of one query in memory in case a query uses the same term twice
-    posting_lists[UNIVERSE] = indexer.get_posting_list(UNIVERSE)
     stack = []
     for term in query:
         if term == "AND":
