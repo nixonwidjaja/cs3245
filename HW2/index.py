@@ -432,8 +432,9 @@ class Indexer:
 
     def get_posting_list(self, word: str, filename=None) -> PostingsList:
         filename = self.out_postings if filename is None else filename
-        if word != UNIVERSE:
-            word = self.stemmer.stem(word.lower(), to_lowercase=True)
+        # This makes our indexer stem the queries two times which results in bugs
+        # if word != UNIVERSE:
+        #     word = self.stemmer.stem(word.lower(), to_lowercase=True)
         if word not in self.word_to_pointer_dict or not os.path.exists(filename):
             return PostingsList()
         with open(filename, "rb") as f:
@@ -509,10 +510,9 @@ def test_get_posting_lists(out_dict, out_postings):
     print("test get posting lists...")
     indexer = Indexer(out_dict, out_postings)
     indexer.load()
-    for word in ["billion", "u.s.", "dollar", "week", ",", "mln"]:
-        print(word)
-        print(indexer.get_posting_list(word))
-        print(indexer.word_to_pointer_dict[word])
+    for word in ["employe"]:
+        pl = indexer.get_posting_list(word)
+        print(posting.docId for posting in pl)
         break
 
 
