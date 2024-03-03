@@ -545,7 +545,7 @@ def run_search(dict_file, postings_file, queries_file, results_file):
             if not query:
                 break
             # Perform naive search or optimised search
-            results = search(query, indexer, stemmer)
+            results = opt_search(query, indexer, stemmer)
             # results = naive_search(query, indexer, stemmer)
             # Write the result to results_file
             outf.write(results + "\n")
@@ -603,12 +603,12 @@ if (
     usage()
     sys.exit(2)
 
-# run_search(dictionary_file, postings_file, file_of_queries, file_of_output)
-print("Evaluating 'optimal' search")
-evaluate_runtime(dictionary_file, postings_file, file_of_queries, search_fn=search)
-print("Evaluating 'naive' search")
-evaluate_runtime(
-    dictionary_file, postings_file, file_of_queries, search_fn=naive_search
-)
-print("Evaluating 'optimised' search")
-evaluate_runtime(dictionary_file, postings_file, file_of_queries, search_fn=opt_search)
+run_search(dictionary_file, postings_file, file_of_queries, file_of_output)
+# print("Evaluating 'optimal' search")
+# evaluate_runtime(dictionary_file, postings_file, file_of_queries, search_fn=search)
+# print("Evaluating 'naive' search")
+# evaluate_runtime(
+#     dictionary_file, postings_file, file_of_queries, search_fn=naive_search
+# )
+# print("Evaluating 'optimised' search")
+# evaluate_runtime(dictionary_file, postings_file, file_of_queries, search_fn=opt_search)
