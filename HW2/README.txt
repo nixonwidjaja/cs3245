@@ -34,10 +34,25 @@ ANDs of the same "level" and sort them in the order of increasing posting list l
 uses abstractions of Term, And, Or, and Not classes that all has evaluate() method to evaluate 
 each term recursively. And class, specifically, sort the terms inside in the order of increasing 
 posting list length to optimise performance as intersection of shorter lists tend to have shorter results.
+We initially tried to use the posting list size from the dictionary to optimise performance but realised 
+that it was better to simply evaluate the term itself and return its length due to how we implemented our
+optimised evaluation function where we could have many nested terms that should recursively evaluate.
 Furthermore, instead of using regular Shunting Yard algorithm and build Term, And, Or, Not abstractions
 from the postfix notation, we cut "the middle man" and modify the Shunting Yard to directly return
 those abstractions without transforming to postfix notation beforehand.
-We timed each algorithm, and opt_search() performs better than naive_search(). 
+We timed each algorithm, and opt_search() performs slightly better than naive_search(). 
+Some quick benchmarking produces the following results
+
+```
+Evaluating 'naive' search
+Took 0.3109586238861084 seconds on average
+Evaluating 'optimised' search
+Took 0.2968503475189209 seconds on average
+```
+
+We suspect that the marginal gains in performance are due to the short sanity queries and that these performance gains
+will be further realised on significantly larger queries, as the extra cost of sorting would dominate the relatively short
+iteration in the sanity queries. A more comprehensive suite of benchmark queries could be used to evaluate these claims substantially.
 
 We approached our development incrementally, first starting with a completely in-memory 
 indexing technique as our source of truth to validate our SPIMI implementation. We then 
