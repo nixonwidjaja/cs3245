@@ -64,7 +64,7 @@ def split(q, stemmer: nltk.stem.PorterStemmer):
 
 def shunting(tokens) -> list[str]:
     """Given a sequence of tokens, return a postfix syntax representation according to
-    Shunting Yard algorithm.
+    Shunting Yard algorithm. This is the default Shunting algorithm.
     """
     if not tokens:
         return
@@ -106,6 +106,7 @@ def opt_shunting(tokens) -> list[str]:
     """
     Given a sequence of tokens and using Shunting Yard algorithm,
     return a combination of Term, Not, And, Or objects to be evaluated.
+    This is the optimised Shunting algorithm.
     """
     if not tokens:
         return
@@ -399,7 +400,8 @@ class Or:
 
 def naive_evaluation(indexer: Indexer, query: list[str]):
     """
-    The most baseline evaluation that operates according to Shunting Yard.
+    The most baseline evaluation that operates according to Shunting Yard, hence
+    'naive'. 
     Query is assumed to be in postfix notation.
     """
 
@@ -449,6 +451,7 @@ def naive_evaluation(indexer: Indexer, query: list[str]):
 
 
 def naive_search(query: str, indexer: Indexer, stemmer: nltk.stem.PorterStemmer) -> str:
+    """Apply the naive search algorithm with the provided query, indexer and stemming technique"""
     # Split the query into operators and regular terms, stem regular terms
     splitted = split(query, stemmer)
     # If invalid query, reject and return ""
@@ -461,6 +464,7 @@ def naive_search(query: str, indexer: Indexer, stemmer: nltk.stem.PorterStemmer)
 
 
 def opt_search(query: str, indexer: Indexer, stemmer: nltk.stem.PorterStemmer) -> str:
+    """Apply the optimised search algorithm with the provided query, indexer and stemming technique"""
     # Split the query into operators and regular terms, stem regular terms
     splitted = split(query, stemmer)
     # If invalid query, reject and return ""
@@ -554,9 +558,9 @@ if (
     sys.exit(2)
 
 run_search(dictionary_file, postings_file, file_of_queries, file_of_output)
-print("Evaluating 'naive' search")
-evaluate_runtime(
-    dictionary_file, postings_file, file_of_queries, search_fn=naive_search
-)
-print("Evaluating 'optimised' search")
-evaluate_runtime(dictionary_file, postings_file, file_of_queries, search_fn=opt_search)
+# print("Evaluating 'naive' search")
+# evaluate_runtime(
+#     dictionary_file, postings_file, file_of_queries, search_fn=naive_search
+# )
+# print("Evaluating 'optimised' search")
+# evaluate_runtime(dictionary_file, postings_file, file_of_queries, search_fn=opt_search)

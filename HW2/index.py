@@ -12,19 +12,14 @@ import sys
 
 
 class Posting:
+    """
+    The posting abstraction which represents the docId (as the value) and the skip pointer
+    which may be none or a pointer to the array idx of the next Posting to skip ahead to.
+    """
     def __init__(self, value) -> None:
         self.value: int = value
-        self.next = None
         # The skip idx in the list
         self.skip: int = None
-        # The skip ptr itself, which will only be initialised for search
-        self.skip_ptr: Posting = None
-
-    def set_next(self, other: "Posting"):
-        self.next = other
-
-    def set_skip(self, skip: int):
-        self.skip = skip
 
     def __lt__(self, other):
         return self.value < other.value
@@ -45,14 +40,7 @@ class Posting:
         return self.value != other.value
 
     def __repr__(self):
-        if self.has_skip() and self.next is not None:
-            return f"(value = {self.value} next = {self.next.value} skip = {self.skip} skip_ptr = {self.skip_ptr.value})"
-        elif self.next is not None:
-            return f"(value = {self.value} next = {self.next.value} skip = {self.skip} skip_ptr = None)"
-        else:
-            return (
-                f"(value = {self.value} next = None skip = {self.skip} skip_ptr = None)"
-            )
+        return f"(value={self.value} skip={self.skip})"
 
     def has_skip(self):
         return self.skip is not None
@@ -62,6 +50,10 @@ class Posting:
 
 
 class PostingsList:
+    """
+    The PostingsList abstraction for a PostingsList as in the lecture material. Provides
+    helper methods for adding skip pointers to the Postings.
+    """
     def __init__(self) -> None:
         self.plist = []
 
@@ -97,37 +89,19 @@ class PostingsList:
             if i + step < len(self.plist):
                 self.plist[i].skip = i + step
 
-    def initialise_linked_list(self) -> Posting:
-        """Convert to linked list"""
-        if len(self.plist) == 0:
-            return None
-        head_posting: Posting = self.plist[0]
-        curr_posting: Posting = head_posting
-        for i in range(1, len(self.plist)):
-            next_posting = self.plist[i]
-            curr_posting.set_next(next_posting)
-            if curr_posting.has_skip():
-                curr_posting.skip_ptr = self.plist[curr_posting.skip]
-            curr_posting = next_posting
-        curr_posting.next = None
-        return head_posting
-
-    def merge(self, other):
-        self.plist.extend(other.plist)
-        if len(self.plist) == 0:
-            return
-        for i in self.plist:
-            i.skip = None
-        self.add_skip_pointers()
-
 
 @dataclass
 class WordToPointerEntry:
+    """
+    Dataclass used for the serialisation of the dictionary to the dictionary.txt file.
+    """
     # Where in the file, the posting list begins
     pointer: int
     # How many additional bytes to read
     pointer_offset: int
     # How many items in the posting list
+    # We initially wanted to use this to optimise search but discovered that it would not fit
+    # with our recursive queries approach
     size: int
 
     def __getstate__(self):
@@ -138,32 +112,24 @@ class WordToPointerEntry:
 
 
 # The term used to represent the list of all doc ids
-UNIVERSE = "-+@\/.,./"  # I am choosing random terms to make this unique
-
-
-"""
-Indexer:
-    take in parameters
-    
-"""
-
-
-class DocumentStream:
-    """Provides a convenient generator over the token stream"""
-
-    def __init__(self, dir):
-        self.dir = dir
-
-    def token_stream(self): ...
+UNIVERSE = "-+@'adasdasdasdasedqwewqeeeqadasdasdasdasdasdasdasdasdad.,."  
+# I am choosing random terms to make this unique so that there is no clash with an actual term
 
 
 @dataclass
 class DocumentStreamToken:
+    """
+    Convenient dataclass to represent each token in the tokenised document stream
+    """
     term: str
     docId: int
 
 
 def tokenize_document(docId, path, processing_fn):
+    """
+    Apply the provided preprocessing function onto the document and then use a generator technique
+    to lazily iterate over the stream.
+    """
     with open(path, "r") as inf:
         text = inf.read()
         # convenient list set hax
@@ -173,6 +139,10 @@ def tokenize_document(docId, path, processing_fn):
 
 
 def tokenize_collection(dir, processing_fn, debug=False):
+    """
+    Apply the generator function tokenize_document onto each document in the directory
+    to avoid reading all into memory thanks to Python generators.
+    """
     for file in os.listdir(dir):
         path = os.path.join(dir, file)
         # Assume that doc id is name of file
@@ -189,6 +159,10 @@ def tokenize_collection(dir, processing_fn, debug=False):
 
 
 class Indexer:
+    """
+    The Indexer abstraction which implements the SPIMI technique for indexing and then
+    writes the dictionary and postings to the provided dictionary and postings file.
+    """
     def __init__(
         self,
         out_dict,
@@ -216,6 +190,7 @@ class Indexer:
         self.use_binary = use_binary
 
     def index_collection(self, collection_dir):
+        """Apply the SPIMI inverting technique then block merge onto the specified directory."""
         token_stream = tokenize_collection(
             collection_dir, processing_fn=self.preprocess_text
         )
@@ -227,6 +202,10 @@ class Indexer:
         print("Blocks merged!")
 
     def spimi_invert(self, token_stream):
+        """
+        SPIMI Invert on the incoming document token stream.
+        Returns the number of block files that were generated.
+        """
         def flush_dictionary():
             nonlocal dictionary, curr_block_number
             sorted_dict = self.sort_dictionary(dictionary)
@@ -257,7 +236,8 @@ class Indexer:
 
     @staticmethod
     def sort_dictionary(dictionary: dict):
-        """Dictionary is mapping from unsorted terms to unsorted list of docIds.
+        """
+        Dictionary is mapping from unsorted terms to unsorted list of docIds.
         We want to sort it into a sorted dictionary by terms and by docIds as seen in slide 22 of the lecture slides.
         """
         # Use an OrderedDict because it remembers insertion order.
@@ -274,15 +254,21 @@ class Indexer:
         return os.path.join(self.block_dir, f"block_{block_id}.txt")
 
     def flush_block(self, block_id: int, dict: dict):
+        """Writes the dictionary to the block file specified by block_id"""
         with open(self.get_block_filename(block_id), "w") as inf:
             for term, docIds in dict.items():
                 inf.write(f"{term}: {docIds}\n")
 
     def merge_blocks(self, num_blocks: int, collection_dir: str):
-        """Maintain num_block pointers to each block file and advance line by line"""
-
+        """
+        Implements the n-way merge algorithm as described in the lecture slides.
+        Maintain num_block pointers to each block file and advance line by line, thus reading in
+        posting list by posting list instead of the entire thing at once as desired.
+        """
         def can_still_process(block_lines):
-            # Stop processing when all are none
+            """
+            Returns False when all the block lines have reached EOF
+            """
             result = not all(line is None for line in block_lines)
             return result
 
@@ -383,11 +369,11 @@ class Indexer:
                 out_df.write(str(self.word_to_pointer_dict))
         print("Done indexing!")
 
-    def get_memory_size(self):
-        return sys.getsizeof(self.dictionary)
 
     def preprocess_text(self, text: str) -> list[str]:
-        """Preprocess a given text"""
+        """
+        Use techniques from NLTK such as word and sent tokenize as well as stemming to preprocess a given text
+        """
         # Convert text to lowercase and tokenize to sentences.
         text = text.lower()
         sentences = nltk.sent_tokenize(text)
@@ -400,6 +386,10 @@ class Indexer:
         return singles
 
     def index(self, file: str, doc_id: int):
+        """
+        This is the in-memory indexing that we used to compare for correctness. Left here for educational purposes and not
+        used in our actual indexing.
+        """
         # Read file and convert text to lowercase
         with open(file, "r") as f:
             text = f.read().lower()
@@ -413,6 +403,10 @@ class Indexer:
         self.universe.append(Posting(value=doc_id))
 
     def finalize(self):
+        """
+        The in-memory finalize which adds skip pointers to all posting list and then writes everything to disk.
+        Not used in our actual indexing and merely left for educational reasons.
+        """
         for s in self.dictionary:
             self.dictionary[s].add_skip_pointers()
         with open(self.out_postings, "wb") as f:
@@ -427,10 +421,19 @@ class Indexer:
             pickle.dump(self.word_to_pointer_dict, f)
 
     def load(self):
+        """
+        Loads the dictionary file into the word_to_pointer_dict attribute as we assume that the 
+        dictionary is small and can fit entirely into memory.
+        used for retrieving the postings list from memory
+        """
         with open(self.out_dict, "rb") as f:
             self.word_to_pointer_dict = pickle.load(f)
 
     def get_posting_list(self, word: str, filename=None) -> PostingsList:
+        """
+        Uses low level file operations such as seek and read to read in a Pickle-serialized version,
+        deserialize it into a PostingsList class and then returns it.
+        """
         filename = self.out_postings if filename is None else filename
         if word not in self.word_to_pointer_dict or not os.path.exists(filename):
             return PostingsList()
@@ -441,6 +444,10 @@ class Indexer:
         return pickle.loads(data)
 
     def get_full_postings(self):
+        """
+        The in-memory method that loads in all the postings. This is not used in our actual indexing
+        and merely left for educational reasons.
+        """
         ans = {}
         self.load()
         for word in self.word_to_pointer_dict:
@@ -461,6 +468,9 @@ def build_index(in_dir, out_dict, out_postings):
 
 
 def compare(in_dir, out_dict, out_postings):
+    """
+    Compares the in-memory approach to the SPIMI approach.
+    """
     print("Comparing in-memory hax and block impl")
     # This is an empty method
     # Pls implement your code in below
@@ -504,6 +514,7 @@ def compare(in_dir, out_dict, out_postings):
 
 
 def test_get_posting_lists(out_dict, out_postings):
+    """Helper method to retrieve some postings for testing"""
     print("test get posting lists...")
     indexer = Indexer(out_dict, out_postings)
     indexer.load()
@@ -548,5 +559,5 @@ if __name__ == "__main__":
         sys.exit(2)
 
     build_index(input_directory, output_file_dictionary, output_file_postings)
-    test_get_posting_lists(output_file_dictionary, output_file_postings)
+    # test_get_posting_lists(output_file_dictionary, output_file_postings)
     # python3 index.py -i ./reuters/small-training -d dictionary.txt -p postings.txt
