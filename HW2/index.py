@@ -432,9 +432,6 @@ class Indexer:
 
     def get_posting_list(self, word: str, filename=None) -> PostingsList:
         filename = self.out_postings if filename is None else filename
-        # This makes our indexer stem the queries two times which results in bugs
-        # if word != UNIVERSE:
-        #     word = self.stemmer.stem(word.lower(), to_lowercase=True)
         if word not in self.word_to_pointer_dict or not os.path.exists(filename):
             return PostingsList()
         with open(filename, "rb") as f:

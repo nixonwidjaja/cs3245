@@ -28,16 +28,13 @@ In our search algorithm, for each query, we split the sentence into words and us
 stemming to tokenize the query. We then use the Shunting-Yard algorithm to parse 
 the textual query into a valid boolean postfix syntax and apply the skip pointer to process
 AND, OR, and NOT operators. We implement 2 algorithms for query evaluation: naive_search() and 
-search(). We made sure both algorithms are correct and produce the same results. naive_search() naively
-process each token ordered by Shunting Yard without any optimisation, while search() groups together 
-ANDs of the same "level" and sort them in the order of increasing posting list length. We timed each
-algorithm and interestingly, for given sanity-queries.txt, 
-search() takes twice as long as naive_search() to complete. One possible
-reason is that search() reprocesses a whole query using a stack one more time on top of Shunting Yard to 
-group the ANDs and sort them, whereas naive_search() directly evaluate the posting lists. Another 
-reason is that sanity-queries.txt has too short queries such that the extra preprocessing done
-by search() cannot show significant performance improvement. Longer queries may benefit from this
-optimisation.
+opt_search(). We made sure both algorithms are correct and produce the same results. naive_search() naively
+process each token ordered by Shunting Yard without any optimisation, while opt_search() groups together 
+ANDs of the same "level" and sort them in the order of increasing posting list length. opt_search() 
+uses abstractions of Term, And, Or, and Not classes that all has evaluate() method to evaluate 
+each term recursively. And class, specifically, sort the terms inside in the order of increasing 
+posting list length to optimise performance as intersection of shorter lists tend to have shorter results.
+We timed each algorithm and opt_search() performs better than naive_search(). 
 
 We approached our development incrementally, first starting with a completely in-memory 
 indexing technique as our source of truth to validate our SPIMI implementation. We then 
