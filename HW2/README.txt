@@ -34,12 +34,18 @@ ANDs of the same "level" and sort them in the order of increasing posting list l
 uses abstractions of Term, And, Or, and Not classes that all has evaluate() method to evaluate 
 each term recursively. And class, specifically, sort the terms inside in the order of increasing 
 posting list length to optimise performance as intersection of shorter lists tend to have shorter results.
-We timed each algorithm and opt_search() performs better than naive_search(). 
+Furthermore, instead of using regular Shunting Yard algorithm and build Term, And, Or, Not abstractions
+from the postfix notation, we cut "the middle man" and modify the Shunting Yard to directly return
+those abstractions without transforming to postfix notation beforehand.
+We timed each algorithm, and opt_search() performs better than naive_search(). 
 
 We approached our development incrementally, first starting with a completely in-memory 
 indexing technique as our source of truth to validate our SPIMI implementation. We then 
 validated our search algorithm by manually tracing through on a small subset of Reuters to 
-validate the correctness of our search algorithm. We further discussed with our fellow peers on Piazza.
+validate the correctness of our search algorithm. After making sure both algorithms are correct,
+we optimise the search algorithm to get better search performance.
+We further discussed with our fellow peers on Piazza to clarify text preprocessing and data structure to 
+use.
 
 == Files included with this submission ==
 
