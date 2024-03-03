@@ -123,8 +123,7 @@ def opt_shunting(tokens) -> list[str]:
     i = 0
     while i < len(tokens):
         token = tokens[i]
-        if token.upper() in operators:
-            token = token.upper()
+        if token in operators:
             terms = []
             while operator_stack and PRECEDENCE[operator_stack[-1]] > PRECEDENCE[token]:
                 last_operator = operator_stack.pop()
