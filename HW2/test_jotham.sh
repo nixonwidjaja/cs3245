@@ -1,0 +1,1 @@
+bash ./run_index.sh && diff output.txt output_jotham.txt

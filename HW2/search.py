@@ -208,20 +208,18 @@ def apply_and(pl1: PostingsList, pl2: PostingsList) -> PostingsList:
     Make use of skip pointers whenever possible.
     Returns the intersection of term 1 and term 2's posting lists.
     """
-    p1 = pl1.initialise_linked_list()
-    p2 = pl2.initialise_linked_list()
+    p1 = p2 = 0  # Pointers to each posting list
     results = []
-    while p1 is not None and p2 is not None:
-        if p1 == p2:
-            results.append(p1.value)
-            p1 = p1.next
-            p2 = p2.next
-        elif p1 < p2:
-            if p1.has_skip() and p1.skip_ptr <= p2:
-                while p1.has_skip() and p1.skip_ptr <= p2:
-                    p1 = p1.skip_ptr
+    while p1 < len(pl1) and p2 < len(pl2):
+        if pl1[p1] == pl2[p2]:
+            results.append(pl1[p1].value)
+            p1 += 1
+            p2 += 1
+        elif pl1[p1] < pl2[p2]:
+            while pl1[p1].has_skip() and pl1[pl1[p1].skip] <= pl2[p2]:
+                p1 = pl1[p1].skip
             else:
-                p1 = p1.next
+                p1 += 1
         else:
             # We gotta do this nested if and while because we want to be able
             # to match on the equality with the skip pointer and not do the
@@ -231,11 +229,11 @@ def apply_and(pl1: PostingsList, pl2: PostingsList) -> PostingsList:
             # we should skip from 1 to 10 and to 20 and then not do the increment
             # doing a while else, while it looks neat, will miss out the 20
             # This mirrors the algorithm shown in the lecture notes
-            if p2.has_skip() and p2.skip_ptr <= p1:
-                while p2.has_skip() and p2.skip_ptr <= p1:
-                    p2 = p2.skip_ptr
+            if pl2[p2].has_skip() and pl2[pl2[p2].skip] <= pl1[p1]:
+                while pl2[p2].has_skip() and pl2[pl2[p2].skip] <= pl1[p1]:
+                    p2 = pl2[p2].skip
             else:
-                p2 = p2.next
+                p2 += 1
     return convert_posting_to_list(results)
 
 
@@ -247,26 +245,24 @@ def apply_or(pl1: PostingsList, pl2: PostingsList) -> PostingsList:
     Returns the union of term 1 and term 2's posting lists.
     """
     p1 = p2 = 0  # Pointers to each posting list
-    p1 = pl1.initialise_linked_list()
-    p2 = pl2.initialise_linked_list()
     results = []
-    while p1 is not None and p2 is not None:
-        if p1 == p2:
-            results.append(p1.value)
-            p1 = p1.next
-            p2 = p2.next
-        elif p1 < p2:
-            results.append(p1.value)
-            p1 = p1.next
+    while p1 < len(pl1) and p2 < len(pl2):
+        if pl1[p1] == pl2[p2]:
+            results.append(pl1[p1].value)
+            p1 += 1
+            p2 += 1
+        elif pl1[p1] < pl2[p2]:
+            results.append(pl1[p1].value)
+            p1 += 1
         else:
-            results.append(p2.value)
-            p2 = p2.next
-    while p1 is not None:
-        results.append(p1.value)
-        p1 = p1.next
-    while p2 is not None:
-        results.append(p2.value)
-        p2 = p2.next
+            results.append(pl2[p2].value)
+            p2 += 1
+    while p1 < len(pl1):
+        results.append(pl1[p1].value)
+        p1 += 1
+    while p2 < len(pl2):
+        results.append(pl2[p2].value)
+        p2 += 1
     return convert_posting_to_list(results)
 
 
@@ -277,27 +273,26 @@ def apply_and_not(pl1: PostingsList, pl2: PostingsList) -> PostingsList:
     term2: 2 3
     result: 1 4 5
     """
-    p1 = pl1.initialise_linked_list()
-    p2 = pl2.initialise_linked_list()
+    p1 = p2 = 0  # Pointers to each posting list
     results = []
-    while p1 is not None and p2 is not None:
-        if p1 < p2:
-            results.append(p1.value)
-            p1 = p1.next
-        elif p1 == p2:
-            p1 = p1.next
-            p2 = p2.next
+    while p1 < len(pl1) and p2 < len(pl2):
+        if pl1[p1] < pl2[p2]:
+            results.append(pl1[p1].value)
+            p1 += 1
+        elif pl1[p1] == pl2[p2]:
+            p1 += 1
+            p2 += 1
         else:
             # Same reasoning as AND skip pointer
             # We still want to jump to equality so that we can advance p1
-            if p2.has_skip() and p2.skip_ptr <= p1:
-                while p2.has_skip() and p2.skip_ptr <= p1:
-                    p2 = p2.skip_ptr
+            if pl2[p2].has_skip() and pl2[pl2[p2].skip] <= pl1[p1]:
+                while pl2[p2].has_skip() and pl2[pl2[p2].skip] <= pl1[p1]:
+                    p2 = pl2[p2].skip
             else:
-                p2 = p2.next
-    while p1 is not None:
-        results.append(p1.value)
-        p1 = p1.next
+                p2 += 1
+    while p1 < len(pl1):
+        results.append(pl1[p1].value)
+        p1 += 1
     return convert_posting_to_list(results)
 
 
@@ -602,12 +597,12 @@ if (
     usage()
     sys.exit(2)
 
-run_search(dictionary_file, postings_file, file_of_queries, file_of_output)
-# print("Evaluating 'optimal' search")
-# evaluate_runtime(dictionary_file, postings_file, file_of_queries, search_fn=search)
-# print("Evaluating 'naive' search")
-# evaluate_runtime(
-#     dictionary_file, postings_file, file_of_queries, search_fn=naive_search
-# )
-# print("Evaluating 'optimised' search")
-# evaluate_runtime(dictionary_file, postings_file, file_of_queries, search_fn=opt_search)
+# run_search(dictionary_file, postings_file, file_of_queries, file_of_output)
+print("Evaluating 'optimal' search")
+evaluate_runtime(dictionary_file, postings_file, file_of_queries, search_fn=search)
+print("Evaluating 'naive' search")
+evaluate_runtime(
+    dictionary_file, postings_file, file_of_queries, search_fn=naive_search
+)
+print("Evaluating 'optimised' search")
+evaluate_runtime(dictionary_file, postings_file, file_of_queries, search_fn=opt_search)
