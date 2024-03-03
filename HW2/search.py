@@ -123,8 +123,7 @@ def opt_shunting(tokens) -> list[str]:
     i = 0
     while i < len(tokens):
         token = tokens[i]
-        if token.upper() in operators:
-            token = token.upper()
+        if token in operators:
             terms = []
             while operator_stack and PRECEDENCE[operator_stack[-1]] > PRECEDENCE[token]:
                 last_operator = operator_stack.pop()
@@ -544,8 +543,8 @@ def run_search(dict_file, postings_file, queries_file, results_file):
             print(f"{num_queries}: OG Query is : " + query)
             if not query:
                 break
-            # Perform naive search or optimised search
-            results = search(query, indexer, stemmer)
+            # Perform optimised search
+            results = opt_search(query, indexer, stemmer)
             # results = naive_search(query, indexer, stemmer)
             # Write the result to results_file
             outf.write(results + "\n")
