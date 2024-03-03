@@ -101,6 +101,75 @@ def shunting(tokens) -> list[str]:
     return result_stack
 
 
+def opt_shunting(tokens) -> list[str]:
+    """
+    Given a sequence of tokens and using Shunting Yard algorithm,
+    return a combination of Term, Not, And, Or objects to be evaluated.
+    """
+    if not tokens:
+        return
+    operator_stack = []
+    term_stack = []
+
+    # Set operator precedence
+    PRECEDENCE = {
+        "NOT": 3,
+        "AND": 2,
+        "OR": 1,
+    }
+
+    operators = ["OR", "AND", "NOT"]
+    # Apply the Shunting Yard algorithm
+    i = 0
+    while i < len(tokens):
+        token = tokens[i]
+        if token.upper() in operators:
+            token = token.upper()
+            terms = []
+            while operator_stack and PRECEDENCE[operator_stack[-1]] > PRECEDENCE[token]:
+                last_operator = operator_stack.pop()
+                if last_operator == "NOT":
+                    term_stack.append(Not(term_stack.pop()))
+                    continue
+                terms.append(term_stack.pop())
+            if terms:
+                terms.append(term_stack.pop())
+                term_stack.append(And(terms))
+            operator_stack.append(token)
+        elif token == "(":
+            right_parenth_idx = tokens[i:].index(")") + i
+            result = opt_shunting(tokens[i + 1 : right_parenth_idx])
+            i = right_parenth_idx
+            term_stack.append(result)
+        else:
+            term_stack.append(Term(token))
+        i += 1
+    terms = []
+    now = None
+    while operator_stack:
+        last_operator = operator_stack.pop()
+        if last_operator == "NOT":
+            term_stack.append(Not(term_stack.pop()))
+            continue
+        if last_operator != now:
+            if terms:
+                terms.append(term_stack.pop())
+                if now == "AND":
+                    term_stack.append(And(terms))
+                if now == "OR":
+                    term_stack.append(Or(terms))
+                terms = []
+            now = last_operator
+        terms.append(term_stack.pop())
+    if terms:
+        terms.append(term_stack.pop())
+        if now == "AND":
+            term_stack.append(And(terms))
+        if now == "OR":
+            term_stack.append(Or(terms))
+    return term_stack[0]
+
+
 """
 BOOLEAN OPERATORS
 """
@@ -455,6 +524,17 @@ def search(query: str, indexer: Indexer, stemmer: nltk.stem.PorterStemmer) -> st
     return opt_eval(indexer, query_list)
 
 
+def opt_search(query: str, indexer: Indexer, stemmer: nltk.stem.PorterStemmer) -> str:
+    # Split the query into operators and regular terms, stem regular terms
+    splitted = split(query, stemmer)
+    # If invalid query, reject and return ""
+    if splitted is None:
+        return ""
+    ans = opt_shunting(splitted).evaluate(indexer)
+    ans = [str(posting.value) for posting in ans.plist]
+    return " ".join(ans)
+
+
 def run_search(dict_file, postings_file, queries_file, results_file):
     """
     using the given dictionary file and postings file,
@@ -533,10 +613,12 @@ if (
     usage()
     sys.exit(2)
 
-run_search(dictionary_file, postings_file, file_of_queries, file_of_output)
-# print("Evaluating 'optimal' search")
-# evaluate_runtime(dictionary_file, postings_file, file_of_queries, search_fn=search)
-# print("Evaluating 'naive' search")
-# evaluate_runtime(
-#     dictionary_file, postings_file, file_of_queries, search_fn=naive_search
-# )
+# run_search(dictionary_file, postings_file, file_of_queries, file_of_output)
+print("Evaluating 'optimal' search")
+evaluate_runtime(dictionary_file, postings_file, file_of_queries, search_fn=search)
+print("Evaluating 'naive' search")
+evaluate_runtime(
+    dictionary_file, postings_file, file_of_queries, search_fn=naive_search
+)
+print("Evaluating 'optimised' search")
+evaluate_runtime(dictionary_file, postings_file, file_of_queries, search_fn=opt_search)
