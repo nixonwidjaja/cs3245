@@ -242,8 +242,8 @@ def apply_not(pl: PostingsList, universe: PostingsList) -> PostingsList:
 Evaluation methods
 """
 # We are using a posting lists to avoid reading from disk the same query two times.
-# One thing to note: we avoid mutating the list itself in our boolean operations and only add the value to the result
-# list. This is to avoid subtle bugs that may arise.
+# One thing to note: we avoid mutating the list itself in our boolean operations and only
+# add the value to the result list. This is to avoid subtle bugs that may arise.
 posting_lists = {}
 
 
@@ -284,7 +284,7 @@ class Not:
 class And:
     """
     And abstraction of And([terms]) that evaluates to the posting list of
-    the result of terms[0] AND terms[1] AND ... AND terms[n-1].
+    the result of 'terms[0] AND terms[1] AND ... AND terms[n-1]'.
     """
 
     def __init__(self, terms) -> None:
@@ -308,7 +308,7 @@ class And:
 class Or:
     """
     Or abstraction of Or([terms]) that evaluates to the posting list of
-    the result of terms[0] OR terms[1] OR ... OR terms[n-1].
+    the result of 'terms[0] OR terms[1] OR ... OR terms[n-1]'.
     """
 
     def __init__(self, terms) -> None:
