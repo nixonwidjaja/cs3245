@@ -65,11 +65,6 @@ def shunting(tokens) -> list[str]:
     operator_stack = []
     result_stack = []
 
-    def flush():
-        nonlocal operator_stack, result_stack
-        while operator_stack:
-            result_stack.append(operator_stack.pop())
-
     PRECEDENCE = {
         "NOT": 3,
         "AND": 2,
@@ -83,8 +78,8 @@ def shunting(tokens) -> list[str]:
         token = tokens[i]
         if token.upper() in operators:
             token = token.upper()
-            if operator_stack and PRECEDENCE[operator_stack[-1]] > PRECEDENCE[token]:
-                flush()
+            while operator_stack and PRECEDENCE[operator_stack[-1]] > PRECEDENCE[token]:
+                result_stack.append(operator_stack.pop())
             operator_stack.append(token)
         elif token == "(":
             right_parenth_idx = tokens[i:].index(")") + i
@@ -95,7 +90,8 @@ def shunting(tokens) -> list[str]:
         else:
             result_stack.append(token)
         i += 1
-    flush()
+    while operator_stack:
+        result_stack.append(operator_stack.pop())
     return result_stack
 
 
@@ -414,9 +410,9 @@ def naive_search(query: str, indexer: Indexer, stemmer: nltk.stem.PorterStemmer)
     query_list = shunting(splitted)
     return naive_evaluation(indexer, query_list)
 
+
 def search(query: str, indexer: Indexer, stemmer: nltk.stem.PorterStemmer) -> str:
     splitted = split(query, stemmer)
-    print("New query is " + str(splitted))
     if splitted is None:
         return ""
     query_list = shunting(splitted)
@@ -446,7 +442,9 @@ def run_search(dict_file, postings_file, queries_file, results_file):
         print(f"Handled {num_queries} queries")
 
 
-def evaluate_runtime(dict_file, postings_file, queries_file, search_fn, num_iterations=100):
+def evaluate_runtime(
+    dict_file, postings_file, queries_file, search_fn, num_iterations=10
+):
     indexer = Indexer(dict_file, postings_file)
     stemmer = nltk.stem.PorterStemmer()
     indexer.load()
@@ -463,7 +461,7 @@ def evaluate_runtime(dict_file, postings_file, queries_file, search_fn, num_iter
             total_time_taken += elapsedTime
     average_time_taken = total_time_taken / num_iterations
     print(f"Took {average_time_taken} seconds on average")
-    
+
 
 dictionary_file = postings_file = file_of_queries = output_file_of_results = None
 
@@ -494,8 +492,10 @@ if (
     usage()
     sys.exit(2)
 
-run_search(dictionary_file, postings_file, file_of_queries, file_of_output)
-# print("Evaluating 'optimal' search")
-# evaluate_runtime(dictionary_file, postings_file, file_of_queries, search_fn=search)
-# print("Evaluating 'naive' search")
-# evaluate_runtime(dictionary_file, postings_file, file_of_queries, search_fn=naive_search)
+# run_search(dictionary_file, postings_file, file_of_queries, file_of_output)
+print("Evaluating 'optimal' search")
+evaluate_runtime(dictionary_file, postings_file, file_of_queries, search_fn=search)
+print("Evaluating 'naive' search")
+evaluate_runtime(
+    dictionary_file, postings_file, file_of_queries, search_fn=naive_search
+)

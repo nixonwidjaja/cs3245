@@ -19,10 +19,10 @@ class Posting:
         self.skip: int = None
         # The skip ptr itself, which will only be initialised for search
         self.skip_ptr: Posting = None
-        
+
     def set_next(self, other: "Posting"):
         self.next = other
-        
+
     def set_skip(self, skip: int):
         self.skip = skip
 
@@ -50,9 +50,10 @@ class Posting:
         elif self.next is not None:
             return f"(value = {self.value} next = {self.next.value} skip = {self.skip} skip_ptr = None)"
         else:
-            return f"(value = {self.value} next = None skip = {self.skip} skip_ptr = None)"
-            
-        
+            return (
+                f"(value = {self.value} next = None skip = {self.skip} skip_ptr = None)"
+            )
+
     def has_skip(self):
         return self.skip is not None
 
@@ -95,7 +96,7 @@ class PostingsList:
         for i in range(0, len(self.plist), step):
             if i + step < len(self.plist):
                 self.plist[i].skip = i + step
-                
+
     def initialise_linked_list(self) -> Posting:
         """Convert to linked list"""
         if len(self.plist) == 0:
@@ -189,7 +190,12 @@ def tokenize_collection(dir, processing_fn, debug=False):
 
 class Indexer:
     def __init__(
-        self, out_dict, out_postings, block_dir="block", block_size=500000, use_binary=False
+        self,
+        out_dict,
+        out_postings,
+        block_dir="block",
+        block_size=500000,
+        use_binary=True,
     ) -> None:
         """
         The posting files contains the serialized version of the posting lists.
@@ -339,7 +345,9 @@ class Indexer:
 
                 # Write to out postings
                 out_pf_ptr = out_pf.tell()
-                pl_data = pickle.dumps(posting_list) if self.use_binary else str(posting_list)
+                pl_data = (
+                    pickle.dumps(posting_list) if self.use_binary else str(posting_list)
+                )
                 out_pf.write(pl_data)
 
                 # print to str for verification
@@ -355,7 +363,11 @@ class Indexer:
                 universe_posting_list.append(posting)
             universe_posting_list.add_skip_pointers()
             out_pf_ptr = out_pf.tell()
-            pl_data = pickle.dumps(universe_posting_list) if self.use_binary else str(universe_posting_list)
+            pl_data = (
+                pickle.dumps(universe_posting_list)
+                if self.use_binary
+                else str(universe_posting_list)
+            )
             out_pf.write(pl_data)
             wpe = WordToPointerEntry(
                 out_pf_ptr, len(pl_data), len(universe_posting_list)
@@ -482,9 +494,12 @@ def build_index(in_dir, out_dict, out_postings):
     build index from documents stored in the input directory,
     then output the dictionary file and postings file
     """
-    print(f"indexing {in_dir} to dictionary file {out_dict} and postings file {out_postings}")
+    print(
+        f"indexing {in_dir} to dictionary file {out_dict} and postings file {out_postings}"
+    )
     indexer = Indexer(out_dict, out_postings)
     indexer.index_collection(in_dir)
+
 
 def compare(in_dir, out_dict, out_postings):
     print("Comparing in-memory hax and block impl")
