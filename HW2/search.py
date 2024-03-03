@@ -49,6 +49,7 @@ def split(q, stemmer: nltk.stem.PorterStemmer):
         return None
     for token in tokens:
         if token.upper() in ["AND", "OR", "NOT", "(", ")"]:
+            # If token is operator, ensure uppercase and reset consecutive regular terms count
             regular_term_count = 0
             new_tokens.append(token.upper())
         else:
@@ -125,41 +126,53 @@ def opt_shunting(tokens) -> list[str]:
         token = tokens[i]
         if token in operators:
             terms = []
+            # While topmost operator precedence > current precedence, group previous Not() and And()
             while operator_stack and PRECEDENCE[operator_stack[-1]] > PRECEDENCE[token]:
                 last_operator = operator_stack.pop()
+                # Form a Not(term) and append to term_stack
                 if last_operator == "NOT":
                     term_stack.append(Not(term_stack.pop()))
                     continue
                 terms.append(term_stack.pop())
             if terms:
+                # Form an And([terms]) and append to term_stack
                 terms.append(term_stack.pop())
                 term_stack.append(And(terms))
+            # Append current operator to operator_stack
             operator_stack.append(token)
         elif token == "(":
+            # If current token is "(", find the next ")" and do opt_shunting for tokens inside ()
             right_parenth_idx = tokens[i:].index(")") + i
             result = opt_shunting(tokens[i + 1 : right_parenth_idx])
+            # Move pointer i to ")"
             i = right_parenth_idx
+            # Append the resulting term to term_stack
             term_stack.append(result)
-        else:
+        else:  # regular terms
             term_stack.append(Term(token))
         i += 1
     terms = []
     now = None
+    # After all query is inside the stacks, process the stacks
     while operator_stack:
         last_operator = operator_stack.pop()
+        # Form a Not(term) and append to term_stack
         if last_operator == "NOT":
             term_stack.append(Not(term_stack.pop()))
             continue
         if last_operator != now:
             if terms:
                 terms.append(term_stack.pop())
+                # Form an And([terms]) and append to term_stack
                 if now == "AND":
                     term_stack.append(And(terms))
+                # Form an Or([terms]) and append to term_stack
                 if now == "OR":
                     term_stack.append(Or(terms))
                 terms = []
             now = last_operator
         terms.append(term_stack.pop())
+    # Process the final term
     if terms:
         terms.append(term_stack.pop())
         if now == "AND":
@@ -354,13 +367,13 @@ class And:
 
     def evaluate(self, indexer: Indexer):
         res = [term.evaluate(indexer) for term in self.terms]
+        # Sort the terms in the order of increasing posting list length to optimise
         res.sort(key=lambda x: len(x))
         ans = res[0]
         for i in range(1, len(res)):
             ans = apply_and(ans, res[i])
             # Need to reapply skip pointers at every iteration
             ans = reapply_skip_pointers(ans)
-        ans = reapply_skip_pointers(ans)
         return ans
 
     def __repr__(self):
@@ -381,61 +394,12 @@ class Or:
         ans = res[0]
         for i in range(1, len(res)):
             ans = apply_or(ans, res[i])
+            # Need to reapply skip pointers at every iteration
             ans = reapply_skip_pointers(ans)
         return ans
 
     def __repr__(self):
         return f"Or( {self.terms} )"
-
-
-def opt_eval(indexer: Indexer, query: list[str]):
-    """
-    Optimised query evaluation that groups ANDs and sort in order of posting list length.
-    Query is assumed to be postfix notation after Shunting Yard.
-    """
-    stack = []
-    for term in query:
-        if term == "AND":
-            # Get the topmost 2 terms
-            a = stack.pop()
-            b = stack.pop()
-            # Combine to a single And()
-            if isinstance(a, And) and isinstance(b, And):
-                stack.append(And(a.terms + b.terms))
-            elif isinstance(a, And):
-                a.terms.append(b)
-                stack.append(a)
-            elif isinstance(b, And):
-                b.terms.append(a)
-                stack.append(b)
-            else:
-                stack.append(And([a, b]))
-        elif term == "OR":
-            # Get the topmost 2 terms
-            a = stack.pop()
-            b = stack.pop()
-            # Combine to a single Or()
-            if isinstance(a, Or) and isinstance(b, Or):
-                stack.append(Or(a.terms + b.terms))
-            elif isinstance(a, Or):
-                a.terms.append(b)
-                stack.append(a)
-            elif isinstance(b, Or):
-                b.terms.append(a)
-                stack.append(b)
-            else:
-                stack.append(Or([a, b]))
-        elif term == "NOT":
-            # Get the topmost term and apply Not()
-            top = stack.pop()
-            stack.append(Not(top))
-        else:  # regular term
-            stack.append(Term(term))
-    # Evaluate the final term which will recursively evaluate its term contents
-    ans = stack[0].evaluate(indexer)
-    # Convert the final posting list into string result
-    ans = [str(posting.value) for posting in ans.plist]
-    return " ".join(ans)
 
 
 def naive_evaluation(indexer: Indexer, query: list[str]):
@@ -501,25 +465,15 @@ def naive_search(query: str, indexer: Indexer, stemmer: nltk.stem.PorterStemmer)
     return naive_evaluation(indexer, query_list)
 
 
-def search(query: str, indexer: Indexer, stemmer: nltk.stem.PorterStemmer) -> str:
-    # Split the query into operators and regular terms, stem regular terms
-    splitted = split(query, stemmer)
-    # If invalid query, reject and return ""
-    if splitted is None:
-        return ""
-    # Apply Shunting Yard to splitted query to get postfix notation
-    query_list = shunting(splitted)
-    # Apply optimised evaluation to postfix query
-    return opt_eval(indexer, query_list)
-
-
 def opt_search(query: str, indexer: Indexer, stemmer: nltk.stem.PorterStemmer) -> str:
     # Split the query into operators and regular terms, stem regular terms
     splitted = split(query, stemmer)
     # If invalid query, reject and return ""
     if splitted is None:
         return ""
+    # Apply optimised Shunting Yard and evaluate the result
     ans = opt_shunting(splitted).evaluate(indexer)
+    # Convert posting list to string result
     ans = [str(posting.value) for posting in ans.plist]
     return " ".join(ans)
 
@@ -540,7 +494,6 @@ def run_search(dict_file, postings_file, queries_file, results_file):
         while True:
             # Read a single line of query
             query = inf.readline().strip()
-            print(f"{num_queries}: OG Query is : " + query)
             if not query:
                 break
             # Perform optimised search
@@ -555,6 +508,9 @@ def run_search(dict_file, postings_file, queries_file, results_file):
 def evaluate_runtime(
     dict_file, postings_file, queries_file, search_fn, num_iterations=10
 ):
+    """
+    Calculate average runtime to get a performance benchmark.
+    """
     indexer = Indexer(dict_file, postings_file)
     stemmer = nltk.stem.PorterStemmer()
     indexer.load()
@@ -602,9 +558,7 @@ if (
     usage()
     sys.exit(2)
 
-# run_search(dictionary_file, postings_file, file_of_queries, file_of_output)
-print("Evaluating 'optimal' search")
-evaluate_runtime(dictionary_file, postings_file, file_of_queries, search_fn=search)
+run_search(dictionary_file, postings_file, file_of_queries, file_of_output)
 print("Evaluating 'naive' search")
 evaluate_runtime(
     dictionary_file, postings_file, file_of_queries, search_fn=naive_search
