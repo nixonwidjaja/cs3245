@@ -490,16 +490,18 @@ def run_search(dict_file, postings_file, queries_file, results_file):
     indexer.load()
     with open(results_file, "w") as outf, open(queries_file, "r") as inf:
         num_queries = 0
-        while True:
+        queries = inf.readlines()
+        for i, query in enumerate(queries):
             # Read a single line of query
-            query = inf.readline().strip()
-            if not query:
-                break
+            query = query.strip()
             # Perform naive search or optimised search
             results = opt_search(query, indexer, stemmer)
             # results = naive_search(query, indexer, stemmer)
             # Write the result to results_file
-            outf.write(results + "\n")
+            if i == len(queries) - 1:
+                outf.write(results)
+            else:
+                outf.write(results + "\n")
             num_queries += 1
         print(f"Handled {num_queries} queries")
 
