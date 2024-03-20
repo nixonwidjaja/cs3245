@@ -1,1 +1,1 @@
-python index.py -i ./reuters/training -d dict.txt -p posting.txt
+python index.py -i ./reuters/training -d dictionary.txt -p posting.txt

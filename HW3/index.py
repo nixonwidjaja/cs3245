@@ -1,5 +1,5 @@
 #!/usr/bin/python3
-import re
+import math
 import nltk
 import sys
 import getopt
@@ -74,6 +74,7 @@ class Indexer:
         self.stemmer = nltk.stem.PorterStemmer()
         self.dictionary = {}
         self.word_to_ptr_dict = {}
+        self.doc_lengths = {}
         if sortkey not in ["docid", "tf"]:
             raise ValueError("sortkey should either be 'docid' or 'tf'")
         self.sortkey = sortkey
@@ -111,11 +112,14 @@ class Indexer:
                     sub_dict[s] = Posting(docId)
                 else:
                     sub_dict[s].tf += 1
+            all_tfs = [p.tf for p in sub_dict.values()]
+            self.doc_lengths[docId] = math.hypot(*all_tfs)
             # Now we have the docId and tf for all the terms, add it to dict
             for single, posting in sub_dict.items():
                 if single not in self.dictionary:
                     self.dictionary[single] = PostingList()
                 self.dictionary[single].append(posting)
+
         with open(self.out_postings, "wb") as outf:
             for single, pl in self.dictionary.items():
                 pl.sort(key=self.sortkey)
@@ -127,6 +131,8 @@ class Indexer:
                 )
         with open(self.out_dict, "wb") as outf:
             pickle.dump(self.word_to_ptr_dict, outf)
+        with open("lengths.txt", "wb") as outf:
+            pickle.dump(self.doc_lengths, outf)
 
     def load(self):
         """
@@ -134,6 +140,13 @@ class Indexer:
         """
         with open(self.out_dict, "rb") as f:
             self.word_to_ptr_dict = pickle.load(f)
+        with open("lengths.txt", "rb") as f:
+            self.doc_lengths = pickle.load(f)
+
+    def get_df(self, word):
+        if word not in self.word_to_ptr_dict:
+            return 0
+        return self.word_to_ptr_dict[word].df
 
     def get_posting_list(self, word, filename=None):
         """Use low level file operation to read in the
