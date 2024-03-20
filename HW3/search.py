@@ -20,8 +20,8 @@ def usage():
 
 
 def preprocess(text: str, stemmer: nltk.stem.PorterStemmer):
-    words = text.split()
-    return [stemmer.stem(w) for w in words]
+    words = text.lower().split()
+    return [stemmer.stem(w, to_lowercase=True) for w in words]
 
 
 def search(words: list[str], indexer: Indexer):
@@ -47,6 +47,7 @@ def search(words: list[str], indexer: Indexer):
     items = list(scores.items())
     items.sort(key=lambda x: x[0])
     items.sort(key=lambda x: x[1], reverse=True)
+    items = [str(i[1]) for i in items]
     return " ".join(items[:10])
 
 
