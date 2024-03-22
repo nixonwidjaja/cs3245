@@ -5,6 +5,7 @@ from index import Indexer
 # Python needs to know what classes are being deserialized into so we need
 # to load the classes into memory for Pickle to work
 from index import WordToPointerEntry, PostingList, Posting
+from collections import defaultdict
 import math
 import nltk
 import sys
@@ -26,30 +27,30 @@ def preprocess(text: str, stemmer: nltk.stem.PorterStemmer):
     ret = []
     for sent in nltk.sent_tokenize(words):
         for word in nltk.word_tokenize(sent):
-            ret.append(stemmer.stem(word, to_lowercase=True))
+            ret.append(stemmer.stem(word.lower(), to_lowercase=True))
     return ret
 
 
-def search(words: list[str], indexer: Indexer):
+def search(tokens: list[str], indexer: Indexer):
+    # print(f"Tokens are {tokens}")
     N = indexer.get_N()
     scores = {}
-    count = {}
-    for word in words:
-        if word not in count:
-            count[word] = 0
-        count[word] += 1
-    for word in words:
-        pl = indexer.get_posting_list(word)
-        df = indexer.get_df(word)
+    count = defaultdict(lambda: 0)
+    for token in tokens:
+        count[token] += 1
+    for token in tokens:
+        pl = indexer.get_posting_list(token)
+        df = indexer.get_df(token)
         for posting in pl.plist:
             docId, tfd = posting.docId, posting.tf
             if docId not in scores:
                 scores[docId] = 0
             wtd = 1 + math.log10(tfd)
-            wtq = (1 + math.log10(count[word])) * math.log10(N / df)
+            wtq = (1 + math.log10(count[token])) * math.log10(N / df)
             scores[docId] += wtd * wtq
     for d in scores.keys():
         scores[d] /= indexer.get_doc_lengths(d)
+        # print(f"Score for {d=} is {scores[d]}")
     items = list(scores.items())
     items.sort(key=lambda x: x[0])
     items.sort(key=lambda x: x[1], reverse=True)
@@ -79,7 +80,7 @@ def run_search(dict_file, postings_file, queries_file, results_file):
             print(f"After transform: {words}")
             result = search(words, indexer)
             outf.write(result + "\n")
-            break
+            # break
 
 
 dictionary_file = postings_file = file_of_queries = output_file_of_results = None

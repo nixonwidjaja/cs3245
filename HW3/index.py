@@ -107,8 +107,9 @@ class Indexer:
         words = []
         for sent in sentences:
             words.extend(nltk.word_tokenize(sent))
-        singles = [self.stemmer.stem(w, to_lowercase=True) for w in words]
+        singles = [self.stemmer.stem(w.lower(), to_lowercase=True) for w in words]
         return singles
+    
 
     def index_collection(self, collection):
         """
@@ -131,7 +132,10 @@ class Indexer:
                     sub_dict[s] = Posting(docId)
                 else:
                     sub_dict[s].tf += 1
-            all_tfs = [p.tf for p in sub_dict.values()]
+            # As seen in piazza, normalisation of the 
+            # doc length should be based on the 
+            # log(tf) + 1 values instead of raw freq
+            all_tfs = [(1 + math.log(p.tf, 10)) for p in sub_dict.values()]
             max_doc_id = max(max_doc_id, docId)
             self.doc_lengths[docId] = math.hypot(*all_tfs)
             # Now we have the docId and tf for all the terms, add it to dict
@@ -172,8 +176,7 @@ class Indexer:
     def get_N(self):
         if not self.doc_lengths:
             self.load()
-        N = self.doc_lengths[self.key_N]
-        return N
+        return len(self.doc_lengths.keys())
 
     def get_posting_list(self, word, filename=None):
         """Use low level file operation to read in the

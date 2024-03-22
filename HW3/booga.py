@@ -6,6 +6,7 @@ import sys
 import getopt
 import heapq
 
+from collections import defaultdict
 from index import Indexer
 # These imports are necessary for pickle to work
 from index import Posting, PostingList, WordToPointerEntry
@@ -36,10 +37,8 @@ def preprocess_query(query: str, stemmer: nltk.stem.StemmerI) -> list[str]:
 
 
 def get_term_freq(query: list[str]) -> dict[str, int]:
-    term_counts = {}
+    term_counts = defaultdict(lambda: int)
     for t in query:
-        if t not in term_counts:
-            term_counts[t] = 0
         term_counts[t] += 1
     return term_counts
         
@@ -56,17 +55,14 @@ def get_tf(term, term_counts) -> float:
 
 def get_idf(term: str, indexer: Indexer) -> float:
     N = indexer.get_N()
+    # print(f"N is {N}")
     df = indexer.get_df(term)
+    # print(f"df for {term} is {df}")
     if df == 0:
         return 0
     return math.log(N / df)
 
 
-def normalize(lst):
-    norm = math.sqrt(sum([i * i for i in lst]))
-    if norm == 0:
-        return lst
-    return [i / norm for i in lst]
     
 
 def compute_w_t_q(term: str, 
@@ -76,6 +72,7 @@ def compute_w_t_q(term: str,
     tf = get_tf(term, term_counts)
     idf = get_idf(term, indexer)
     w_t_q = tf * idf
+    # print(f"w_t_q for {term} is {w_t_q}")
     return w_t_q
 
 def compute_w_t_d(tf_t_d):
@@ -84,11 +81,26 @@ def compute_w_t_d(tf_t_d):
     # The other term is times 1, so identity
     return tf
 
+def compute_query_vector(terms: list[str], indexer: Indexer, term_counts):
+    length = 0
+    query_vector = {}
+    for term in terms:
+        tf = get_tf(term, term_counts)
+        idf = get_idf(term, indexer)
+        weight = tf * idf
+        query_vector[term] = weight
+    length = math.hypot(*list(query_vector.values()))
+    if length > 0:
+        for term in terms:
+            query_vector[term] /= length
+    # print(f"Query vector is {query_vector.items()}")
+    return query_vector
+    
 
 def search(query, indexer: Indexer, K=10):
     """Compute relevant documents using the cosine score redux algorithm"""
     query = preprocess_query(query, indexer.stemmer)
-    N = indexer.get_N() + 1
+    # print(f"Tokens are {query}")
     # We store scores as (score, docId)
     # heapify uses the first attribute, so we want to 'sort' by score
     # then afterwards, we retain the docId as the return value
@@ -98,8 +110,12 @@ def search(query, indexer: Indexer, K=10):
     length = indexer.get_doc_length()
     # Obtain the term counts to avoid doing repeated work
     term_counts = get_term_freq(query)
-    for term in query:
-        w_t_q = compute_w_t_q(term, indexer, term_counts)
+    # Compute the query vector separately so that we can
+    # normalize it separately as well
+    query = list(set(query))
+    query_vector = compute_query_vector(query, indexer, term_counts)
+    for term in set(query):
+        w_t_q = query_vector[term]
         pl = indexer.get_posting_list(term)
         for posting in pl:
             d = posting.docId
@@ -107,17 +123,21 @@ def search(query, indexer: Indexer, K=10):
                 scores[d] = Score(0, d)
             tf_t_d = posting.tf
             w_t_d = compute_w_t_d(tf_t_d)
+            # print(f"w_t_d for {term} and {d=} is {w_t_d}")
             scores[d].score += w_t_d * w_t_q
-    for docId, score in scores.items():
+    for docId in scores.keys():
+        # print(f"Original score for {docId} was {scores[docId].score}")
+        # print(f"Length for {docId} is {length[docId]}")
         scores[docId].score = scores[docId].score / length[docId]
-    # Python uses a min heap
-    scores = list(map(lambda s: Score(s.score * -1, s.docId), scores.values()))
-    heapq.heapify(scores)
-    print(len(scores))
-    results = []
-    for _ in range(min(K, len(scores))):
-        score = heapq.heappop(scores)
-        results.append(score.docId)
+        # print(f"Score for {docId=} is {scores[docId]}")
+    
+    # Invert the docId since we are interested in
+    # ascending docId as tiebreakers.
+    # The heapq is largest, so inverting will make the
+    # smaller ones go first 
+    heap = [(s.score, -s.docId) for s in scores.values()]
+    heap = heapq.nlargest(K, heap)
+    results = [-item[1] for item in heap]
     return results
     
 
@@ -138,8 +158,6 @@ def run_search(dict_file, postings_file, queries_file, results_file, K=10):
             line = line.strip()
             docIds = search(line, indexer, K=K)
             wf.write(" ".join(list(map(str, docIds))) + "\n")
-            if i > 10:
-                break
 
 
 if __name__ == "__main__":
