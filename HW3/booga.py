@@ -92,9 +92,9 @@ def search(query, indexer: Indexer, K=10):
     # We store scores as (score, docId)
     # heapify uses the first attribute, so we want to 'sort' by score
     # then afterwards, we retain the docId as the return value
-    scores = []
-    for i in range(N):
-        scores.append(Score(0, i))
+    scores = {}
+    # for i in range(N):
+    #     scores.append(Score(0, i))
     length = indexer.get_doc_length()
     # Obtain the term counts to avoid doing repeated work
     term_counts = get_term_freq(query)
@@ -103,18 +103,19 @@ def search(query, indexer: Indexer, K=10):
         pl = indexer.get_posting_list(term)
         for posting in pl:
             d = posting.docId
+            if d not in scores:
+                scores[d] = Score(0, d)
             tf_t_d = posting.tf
             w_t_d = compute_w_t_d(tf_t_d)
             scores[d].score += w_t_d * w_t_q
-    for i in range(N):
-        if i not in length:
-            continue
-        scores[i].score = scores[i].score / length[i]
+    for docId, score in scores.items():
+        scores[docId].score = scores[docId].score / length[docId]
     # Python uses a min heap
-    scores = list(map(lambda s: Score(s.score * -1, s.docId), scores))
+    scores = list(map(lambda s: Score(s.score * -1, s.docId), scores.values()))
     heapq.heapify(scores)
+    print(len(scores))
     results = []
-    for _ in range(K):
+    for _ in range(min(K, len(scores))):
         score = heapq.heappop(scores)
         results.append(score.docId)
     return results
@@ -133,10 +134,12 @@ def run_search(dict_file, postings_file, queries_file, results_file, K=10):
     indexer = Indexer(dict_file, postings_file)
     with open(queries_file, "r") as qf, open(results_file, "w") as wf:
         import tqdm
-        for line in tqdm.tqdm(qf.readlines()):
+        for i, line in enumerate(tqdm.tqdm(qf.readlines())):
             line = line.strip()
             docIds = search(line, indexer, K=K)
             wf.write(" ".join(list(map(str, docIds))) + "\n")
+            if i > 10:
+                break
 
 
 if __name__ == "__main__":
