@@ -1,1 +1,1 @@
-python search.py -d ./dictionary.txt -p ./postings.txt -q ./sanity-queries.txt -o output.txt
+python booga.py -d ./dictionary.txt -p ./posting.txt -q ./sanity-queries.txt -o output.txt

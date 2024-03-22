@@ -20,12 +20,18 @@ def usage():
 
 
 def preprocess(text: str, stemmer: nltk.stem.PorterStemmer):
-    words = text.lower().split()
-    return [stemmer.stem(w, to_lowercase=True) for w in words]
+    # words = text.strip().lower().split()
+    # return [stemmer.stem(w, to_lowercase=True) for w in words]
+    words = text.strip().lower()
+    ret = []
+    for sent in nltk.sent_tokenize(words):
+        for word in nltk.word_tokenize(sent):
+            ret.append(stemmer.stem(word, to_lowercase=True))
+    return ret
 
 
 def search(words: list[str], indexer: Indexer):
-    N = len(indexer.doc_lengths)
+    N = indexer.get_N()
     scores = {}
     count = {}
     for word in words:
@@ -42,12 +48,12 @@ def search(words: list[str], indexer: Indexer):
             wtd = 1 + math.log10(tfd)
             wtq = (1 + math.log10(count[word])) * math.log10(N / df)
             scores[docId] += wtd * wtq
-    for d in scores:
-        scores[d] /= indexer.doc_lengths[d]
+    for d in scores.keys():
+        scores[d] /= indexer.get_doc_lengths(d)
     items = list(scores.items())
     items.sort(key=lambda x: x[0])
     items.sort(key=lambda x: x[1], reverse=True)
-    items = [str(i[1]) for i in items]
+    items = [str(i[0]) for i in items]
     return " ".join(items[:10])
 
 
@@ -68,9 +74,12 @@ def run_search(dict_file, postings_file, queries_file, results_file):
         queries = inf.readlines()
         for query in queries:
             query = query.strip()
+            print(f"OG Query: {query}")
             words = preprocess(query, stemmer)
+            print(f"After transform: {words}")
             result = search(words, indexer)
             outf.write(result + "\n")
+            break
 
 
 dictionary_file = postings_file = file_of_queries = output_file_of_results = None

@@ -46,6 +46,22 @@ class PostingList:
     def __repr__(self):
         return str(self.plist)
 
+    def __iter__(self):
+        self.i = 0
+        return self
+
+    def __next__(self):
+        if self.i >= len(self):
+            raise StopIteration
+        x = self.plist[self.i]
+        self.i += 1
+        return x
+
+    def __getitem__(self, i):
+        return self.plist[i]
+    
+    
+
 
 @dataclass
 class WordToPointerEntry:
@@ -78,6 +94,8 @@ class Indexer:
         if sortkey not in ["docid", "tf"]:
             raise ValueError("sortkey should either be 'docid' or 'tf'")
         self.sortkey = sortkey
+        # Key to get N
+        self.key_N = "N.N.N.N.N.N.N"
 
     def preprocess_text(self, text: str) -> list[str]:
         """
@@ -97,6 +115,7 @@ class Indexer:
         In-memory indexing of the collection
         We first write to our in-memory dict then we write to the file
         """
+        max_doc_id = 0
         for file in os.listdir(collection):
             path = os.path.join(collection, file)
             docId = int(file)
@@ -113,6 +132,7 @@ class Indexer:
                 else:
                     sub_dict[s].tf += 1
             all_tfs = [p.tf for p in sub_dict.values()]
+            max_doc_id = max(max_doc_id, docId)
             self.doc_lengths[docId] = math.hypot(*all_tfs)
             # Now we have the docId and tf for all the terms, add it to dict
             for single, posting in sub_dict.items():
@@ -131,6 +151,7 @@ class Indexer:
                 )
         with open(self.out_dict, "wb") as outf:
             pickle.dump(self.word_to_ptr_dict, outf)
+        self.doc_lengths[self.key_N] = max_doc_id
         with open("lengths.txt", "wb") as outf:
             pickle.dump(self.doc_lengths, outf)
 
@@ -147,18 +168,42 @@ class Indexer:
         if word not in self.word_to_ptr_dict:
             return 0
         return self.word_to_ptr_dict[word].df
+    
+    def get_N(self):
+        if not self.doc_lengths:
+            self.load()
+        N = self.doc_lengths[self.key_N]
+        return N
 
     def get_posting_list(self, word, filename=None):
         """Use low level file operation to read in the
         Pickle serialized file, deserialize into PostingList"""
+        if not self.word_to_ptr_dict:
+            self.load()
         filename = self.out_postings if filename is None else filename
-        if word not in self.word_to_ptr_dict or not os.path.exists(filename):
+        if word not in self.word_to_ptr_dict.keys():
+            return PostingList()
+        if not os.path.exists(filename):
             return PostingList()
         with open(filename, "rb") as inf:
             entry = self.word_to_ptr_dict[word]
             inf.seek(entry.pointer)
             data = inf.read(entry.pointer_offset)
         return pickle.loads(data)
+    
+    def get_doc_lengths(self, term):
+        if not self.doc_lengths:
+            self.load()
+        if term not in self.doc_lengths:
+            return self.doc_lengths[term]
+        return 1
+    
+    def get_doc_length(self):
+        if not self.doc_lengths:
+            self.load()
+        return self.doc_lengths
+    
+        
 
 
 def usage():
@@ -177,6 +222,7 @@ def build_index(in_dir, out_dict, out_postings):
     print("indexing...")
     indexer = Indexer(out_dict, out_postings)
     indexer.index_collection(in_dir)
+    return indexer
 
 
 def test_get_posting_lists(out_dict, out_postings):
@@ -214,5 +260,7 @@ if __name__ == "__main__":
         usage()
         sys.exit(2)
 
-    build_index(input_directory, output_file_dictionary, output_file_postings)
+    indexer = build_index(input_directory, output_file_dictionary, output_file_postings)
+    print(indexer.get_posting_list("chu"))
+    print(indexer.get_posting_list("housing,"))
     # test_get_posting_lists(output_file_dictionary, output_file_postings)
