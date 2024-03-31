@@ -210,6 +210,7 @@ class Indexer:
         return 1
     
     def get_doc_length(self):
+        """Retrieve the document length vector, loading from disk if necessary"""
         if not self.doc_lengths:
             self.load()
         return self.doc_lengths
