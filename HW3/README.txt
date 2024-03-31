@@ -19,11 +19,21 @@ an integer. It uses NLTK's sent_tokenize, word_tokenize, PorterStemmer
 and lower case folding to tokenize the documents. It then computes a Posting abstraction for 
 each document which includes the term frequency of a term for each document.
 Afterwards, the log(tf) + 1 values of the Posting are pre-computed to speed up 
-the search algorithm and stored in a posting files. The document vector for each document is also pre-computed and stored in a separate document lengths file.
+the search algorithm and stored in a posting files. The document vector for each document is 
+also pre-computed and stored in a separate document lengths file.
 Finally, the dictionary itself is pickled into a dictionary binary file.
 
-In searching, we first apply the exact same preprocessing step as used by indexing on our query and then convert the query string into a Counter of term frequencies in the query, which we use to compute the query vector where tf is computed using the term frequency with respect to the Counter and idf is computed with respect to the indexed corpus. We follow the optimised cosine score algorithm as shown in the lecture closely.
-We retrieve the Posting List for each unique query term. The score for each document is computed with the precomputed w_t_d which was log base 10 of term freq + 1 and the query weight in the query vector. Finally, the document score is normalized using the precomputed document length in the indexing stage. The heap data structure is then used to optimise the top-K retrieval. As far as possible, we have optimized our search to use as much pre-computation as possible and ended up with a total run time of ~38 seconds on the sanity queries.
+In searching, we first apply the exact same preprocessing step as used by indexing on our 
+query and then convert the query string into a Counter of term frequencies in the query, 
+which we use to compute the query vector where tf is computed using the term frequency with 
+respect to the Counter and idf is computed with respect to the indexed corpus. We follow the 
+optimised cosine score algorithm as shown in the lecture closely.
+We retrieve the Posting List for each unique query term. The score for each document is 
+computed with the precomputed w_t_d which was log base 10 of term freq + 1 and the query 
+weight in the query vector. Finally, the document score is normalized using the precomputed 
+document length in the indexing stage. The heap data structure is then used to optimise the 
+top-K retrieval. As far as possible, we have optimized our search to use as much 
+pre-computation as possible and ended up with a total run time of ~38 seconds on the sanity queries.
 
 
 == Files included with this submission ==
