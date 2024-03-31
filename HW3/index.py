@@ -68,7 +68,6 @@ class WordToPointerEntry:
     """
     Dataclass used for serialisation of dict to dictionary.txt
     """
-
     # Where in the file, the PostingList begins
     pointer: int
     # How many additional bytes to read
@@ -84,6 +83,7 @@ class WordToPointerEntry:
 
 
 class Indexer:
+    """Class used to index the collection of documents into a dictionary and postings file."""
     def __init__(self, out_dict, out_postings, sortkey: str = "docid"):
         self.out_dict = out_dict
         self.out_postings = out_postings
@@ -102,7 +102,6 @@ class Indexer:
         Use techniques from NLTK such as word and sent tokenize as well as
         stemming to preprocess a given text
         """
-        text = text.lower()
         sentences = nltk.sent_tokenize(text)
         words = []
         for sent in sentences:
@@ -169,11 +168,13 @@ class Indexer:
             self.doc_lengths = pickle.load(f)
 
     def get_df(self, word):
+        """get the doc frequency for a word in the collection"""
         if word not in self.word_to_ptr_dict:
             return 0
         return self.word_to_ptr_dict[word].df
     
     def get_N(self):
+        """get the total number of documents in the collection"""
         if not self.doc_lengths:
             self.load()
         return len(self.doc_lengths.keys())
@@ -195,18 +196,12 @@ class Indexer:
         return pickle.loads(data)
     
     def get_doc_lengths(self, term):
+        """Get the doc lengths vector for a term"""
         if not self.doc_lengths:
             self.load()
         if term not in self.doc_lengths:
             return self.doc_lengths[term]
         return 1
-    
-    def get_doc_length(self):
-        if not self.doc_lengths:
-            self.load()
-        return self.doc_lengths
-    
-        
 
 
 def usage():
@@ -229,6 +224,7 @@ def build_index(in_dir, out_dict, out_postings):
 
 
 def test_get_posting_lists(out_dict, out_postings):
+    """Test getting posting lists"""
     indexer = Indexer(out_dict, out_postings)
     indexer.load()
     for word in ["employe"]:
@@ -264,6 +260,6 @@ if __name__ == "__main__":
         sys.exit(2)
 
     indexer = build_index(input_directory, output_file_dictionary, output_file_postings)
-    print(indexer.get_posting_list("chu"))
-    print(indexer.get_posting_list("housing,"))
+    # print(indexer.get_posting_list("chu"))
+    # print(indexer.get_posting_list("housing,"))
     # test_get_posting_lists(output_file_dictionary, output_file_postings)

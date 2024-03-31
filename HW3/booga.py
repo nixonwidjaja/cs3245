@@ -24,11 +24,11 @@ class Score:
         
     def __lt__(self, other):
         # Sort by score then by docId
-        return (self.score < other.score) or (self.score == other.score and self.docId < other.docId)
+        return (self.score > other.score) or (self.score == other.score and self.docId < other.docId)
 
 def preprocess_query(query: str, stemmer: nltk.stem.StemmerI) -> list[str]:
-    # print("OG query: " + query)
-    query = query.strip().lower()
+    """Preprocess the query using nltk"""
+    query = query.strip()
     ret = []
     for sent in nltk.sent_tokenize(query):
         for word in nltk.word_tokenize(sent):
@@ -37,7 +37,8 @@ def preprocess_query(query: str, stemmer: nltk.stem.StemmerI) -> list[str]:
 
 
 def get_term_freq(query: list[str]) -> dict[str, int]:
-    term_counts = defaultdict(lambda: int)
+    """Given a query, compute the mapping of term to occurrences"""
+    term_counts = defaultdict(int)
     for t in query:
         term_counts[t] += 1
     return term_counts
@@ -48,34 +49,33 @@ def usage():
     
     
 def get_tf(term, term_counts) -> float:
+    """Get the tf of a term given the Indexer"""
     # If num_terms[term] = 0, something has gone horribly wrong
     tf = 1 + math.log(term_counts[term], 10)
     return tf
 
 
 def get_idf(term: str, indexer: Indexer) -> float:
+    """Get the idf of a term given the Indexer"""
     N = indexer.get_N()
-    # print(f"N is {N}")
     df = indexer.get_df(term)
-    # print(f"df for {term} is {df}")
     if df == 0:
         return 0
     return math.log(N / df)
-
-
     
 
 def compute_w_t_q(term: str, 
                   indexer: Indexer,
                   term_counts: dict[str, int]):
+    """Compute the weight of a term given the Indexer and the query counts"""
     # If num_terms[term] = 0, something has gone horribly wrong
     tf = get_tf(term, term_counts)
     idf = get_idf(term, indexer)
     w_t_q = tf * idf
-    # print(f"w_t_q for {term} is {w_t_q}")
     return w_t_q
 
 def compute_w_t_d(tf_t_d):
+    """Given the tf_t_d, compute w_t_d. Currently uses the math.log(_, 10)"""
     # If num_terms[term] = 0, something has gone horribly wrong
     tf = 1 + math.log(tf_t_d, 10)
     # The other term is times 1, so identity
@@ -93,20 +93,16 @@ def compute_query_vector(terms: list[str], indexer: Indexer, term_counts):
     if length > 0:
         for term in terms:
             query_vector[term] /= length
-    # print(f"Query vector is {query_vector.items()}")
     return query_vector
     
 
 def search(query, indexer: Indexer, K=10):
     """Compute relevant documents using the cosine score redux algorithm"""
     query = preprocess_query(query, indexer.stemmer)
-    # print(f"Tokens are {query}")
     # We store scores as (score, docId)
     # heapify uses the first attribute, so we want to 'sort' by score
     # then afterwards, we retain the docId as the return value
     scores = {}
-    # for i in range(N):
-    #     scores.append(Score(0, i))
     length = indexer.get_doc_length()
     # Obtain the term counts to avoid doing repeated work
     term_counts = get_term_freq(query)
@@ -123,14 +119,9 @@ def search(query, indexer: Indexer, K=10):
                 scores[d] = Score(0, d)
             tf_t_d = posting.tf
             w_t_d = compute_w_t_d(tf_t_d)
-            # print(f"w_t_d for {term} and {d=} is {w_t_d}")
             scores[d].score += w_t_d * w_t_q
     for docId in scores.keys():
-        # print(f"Original score for {docId} was {scores[docId].score}")
-        # print(f"Length for {docId} is {length[docId]}")
         scores[docId].score = scores[docId].score / length[docId]
-        # print(f"Score for {docId=} is {scores[docId]}")
-    
     # Invert the docId since we are interested in
     # ascending docId as tiebreakers.
     # The heapq is largest, so inverting will make the
@@ -149,8 +140,6 @@ def run_search(dict_file, postings_file, queries_file, results_file, K=10):
     K = top K documents to retrieve
     """
     print('running search on the queries...')
-    # This is an empty method
-    # Pls implement your code in below
     indexer = Indexer(dict_file, postings_file)
     with open(queries_file, "r") as qf, open(results_file, "w") as wf:
         import tqdm
