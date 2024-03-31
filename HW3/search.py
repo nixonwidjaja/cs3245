@@ -1,5 +1,4 @@
 #!/usr/bin/python3
-import re
 import math
 import nltk
 import sys
@@ -12,11 +11,12 @@ from index import Indexer
 # These imports are necessary for pickle to work
 from index import Posting, PostingList, WordToPointerEntry
 
-from cProfile import Profile
-from pstats import SortKey, Stats
 
 def preprocess_query(query: str, stemmer: nltk.stem.StemmerI) -> list[str]:
-    """Preprocess the query using nltk"""
+    """
+    Use techniques from NLTK such as word and sent tokenize as well as
+    stemming to preprocess a given text. Applies case folding last.
+    """
     query = query.strip()
     ret = []
     sentences = nltk.sent_tokenize(query)
@@ -32,41 +32,25 @@ def get_term_freq(query: list[str]) -> dict[str, int]:
         
 
 def usage():
+    """Prints usage for search.py"""
     print("usage: " + sys.argv[0] + " -d dictionary-file -p postings-file -q file-of-queries -o output-file-of-results")
     
     
 def get_tf(term, term_counts) -> float:
-    """Get the tf of a term given the Indexer"""
+    """Get the tf of a query term given the Indexer"""
     # If num_terms[term] = 0, something has gone horribly wrong
     tf = 1 + math.log(term_counts[term], 10)
     return tf
 
 
 def get_idf(term: str, indexer: Indexer) -> float:
-    """Get the idf of a term given the Indexer"""
+    """Get the idf of a query term given the Indexer"""
     N = indexer.get_N()
     df = indexer.get_df(term)
     if df == 0:
         return 0
     return math.log(N / df)
     
-
-def compute_w_t_q(term: str, 
-                  indexer: Indexer,
-                  term_counts: dict[str, int]):
-    """Compute the weight of a term given the Indexer and the query counts"""
-    # If num_terms[term] = 0, something has gone horribly wrong
-    tf = get_tf(term, term_counts)
-    idf = get_idf(term, indexer)
-    w_t_q = tf * idf
-    return w_t_q
-
-def compute_w_t_d(tf_t_d):
-    """Given the tf_t_d, compute w_t_d. Currently uses the math.log(_, 10)"""
-    # If num_terms[term] = 0, something has gone horribly wrong
-    tf = 1 + math.log(tf_t_d, 10)
-    # The other term is times 1, so identity
-    return tf
 
 def compute_query_vector(terms: list[str], indexer: Indexer, term_counts):
     """Compute the query-normalised query vector for a query given indexer"""
@@ -118,7 +102,6 @@ def search(query, indexer: Indexer, K=10):
     heap = heapq.nlargest(K, heap)
     results = [-item[1] for item in heap]
     return results
-    
 
 
 def run_search(dict_file, postings_file, queries_file, results_file, K=10):

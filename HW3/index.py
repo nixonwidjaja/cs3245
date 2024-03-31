@@ -60,7 +60,6 @@ class PostingList:
     def __getitem__(self, i):
         return self.plist[i]
     
-    
 
 
 @dataclass
@@ -85,6 +84,16 @@ class WordToPointerEntry:
 class Indexer:
     """Class used to index the collection of documents into a dictionary and postings file."""
     def __init__(self, out_dict, out_postings, sortkey: str = "docid"):
+        """
+
+        Args:
+            out_dict (_type_): file path for dictionary
+            out_postings (_type_): file path for postings list
+            sortkey (str, optional): key to sort postings by. Used internally. Defaults to "docid".
+
+        Raises:
+            ValueError: _description_
+        """
         self.out_dict = out_dict
         self.out_postings = out_postings
         self.stemmer = nltk.stem.PorterStemmer()
@@ -98,7 +107,7 @@ class Indexer:
     def preprocess_text(self, text: str) -> list[str]:
         """
         Use techniques from NLTK such as word and sent tokenize as well as
-        stemming to preprocess a given text
+        stemming to preprocess a given text. Applies case folding last.
         """
         sentences = nltk.sent_tokenize(text)
         words = []
@@ -114,7 +123,8 @@ class Indexer:
     def index_collection(self, collection):
         """
         In-memory indexing of the collection
-        We first write to our in-memory dict then we write to the file
+        We first write to our in-memory dict then we write to the file.
+        No need for any fancy SPIMI technique as required.
         """
         max_doc_id = 0
         for file in os.listdir(collection):
@@ -275,6 +285,3 @@ if __name__ == "__main__":
         sys.exit(2)
 
     indexer = build_index(input_directory, output_file_dictionary, output_file_postings)
-    # print(indexer.get_posting_list("chu"))
-    # print(indexer.get_posting_list("housing,"))
-    # test_get_posting_lists(output_file_dictionary, output_file_postings)
