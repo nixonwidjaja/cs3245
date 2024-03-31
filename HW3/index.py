@@ -6,7 +6,7 @@ import getopt
 import os
 import pickle
 from dataclasses import dataclass
-
+import time
 
 class Posting:
     """
@@ -94,8 +94,6 @@ class Indexer:
         if sortkey not in ["docid", "tf"]:
             raise ValueError("sortkey should either be 'docid' or 'tf'")
         self.sortkey = sortkey
-        # Key to get N
-        self.key_N = "N.N.N.N.N.N.N"
 
     def preprocess_text(self, text: str) -> list[str]:
         """
@@ -109,7 +107,7 @@ class Indexer:
         # In general, case folding should be the last step since the case
         # itself is commonly used to indicate some linguistic information 
         # such as proper nouns/start of a sentence - Zhao Jin
-        singles = [self.stemmer.stem(w.lower(), to_lowercase=True) for w in words]
+        singles = [self.stemmer.stem(w).lower() for w in words]
         return singles
     
 
@@ -123,7 +121,7 @@ class Indexer:
             path = os.path.join(collection, file)
             docId = int(file)
             with open(path, "r") as f:
-                text = f.read().lower()
+                text = f.read()
             singles = self.preprocess_text(text)
             # Because we want to store the term frequency, we will compute
             # a sub-dictionary of all the Postings first and then add it to
@@ -140,11 +138,12 @@ class Indexer:
             # Pre-compute the tf weights
             all_tfs = []
             for k, p in sub_dict.items():
-                precomputed_tf = 1 + math.log(p.tf, 10) 
+                precomputed_tf = 1 + math.log10(p.tf)
                 p.tf = precomputed_tf
                 all_tfs.append(precomputed_tf)
-            max_doc_id = max(max_doc_id, docId)
-            self.doc_lengths[docId] = math.hypot(*all_tfs)
+            # For some reason, this two lines are actually not equivalent!
+            # self.doc_lengths[docId] = math.hypot(*all_tfs)
+            self.doc_lengths[docId] = math.sqrt(sum(tf ** 2 for tf in all_tfs))
             # Now we have the docId and tf for all the terms, add it to dict
             for single, posting in sub_dict.items():
                 if single not in self.dictionary:
@@ -162,7 +161,6 @@ class Indexer:
                 )
         with open(self.out_dict, "wb") as outf:
             pickle.dump(self.word_to_ptr_dict, outf)
-        self.doc_lengths[self.key_N] = max_doc_id
         with open("lengths.txt", "wb") as outf:
             pickle.dump(self.doc_lengths, outf)
 
@@ -194,9 +192,9 @@ class Indexer:
             self.load()
         filename = self.out_postings if filename is None else filename
         if word not in self.word_to_ptr_dict.keys():
-            return PostingList()
+            return None
         if not os.path.exists(filename):
-            return PostingList()
+            return None
         with open(filename, "rb") as inf:
             entry = self.word_to_ptr_dict[word]
             inf.seek(entry.pointer)
@@ -231,8 +229,11 @@ def build_index(in_dir, out_dict, out_postings):
     then output the dictionary file and postings file
     """
     print("indexing...")
+    start_time = time.time()
     indexer = Indexer(out_dict, out_postings)
     indexer.index_collection(in_dir)
+    end_time = time.time()
+    print(f"Took {end_time - start_time} seconds to index")
     return indexer
 
 

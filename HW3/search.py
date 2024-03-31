@@ -5,43 +5,30 @@ import nltk
 import sys
 import getopt
 import heapq
+import time
 
-from collections import defaultdict
+from collections import defaultdict, Counter
 from index import Indexer
 # These imports are necessary for pickle to work
 from index import Posting, PostingList, WordToPointerEntry
 
-
-class Score:
-    """A custom score object with a custom defined
-    __lt__ to meet the ordering specified"""
-    def __init__(self, score, docId):
-        self.score = score
-        self.docId = docId
-        
-    def __repr__(self):
-        return f"(Score={self.score},docId={self.docId})"
-        
-    def __lt__(self, other):
-        # Sort by score then by docId
-        return (self.score > other.score) or (self.score == other.score and self.docId < other.docId)
+from cProfile import Profile
+from pstats import SortKey, Stats
 
 def preprocess_query(query: str, stemmer: nltk.stem.StemmerI) -> list[str]:
     """Preprocess the query using nltk"""
     query = query.strip()
     ret = []
-    for sent in nltk.sent_tokenize(query):
-        for word in nltk.word_tokenize(sent):
-            ret.append(stemmer.stem(word.lower(), to_lowercase=True))
+    sentences = nltk.sent_tokenize(query)
+    for sentence in sentences:
+        for word in nltk.word_tokenize(sentence):
+            ret.append(stemmer.stem(word).lower())
     return ret
 
 
 def get_term_freq(query: list[str]) -> dict[str, int]:
     """Given a query, compute the mapping of term to occurrences"""
-    term_counts = defaultdict(int)
-    for t in query:
-        term_counts[t] += 1
-    return term_counts
+    return Counter(query)
         
 
 def usage():
@@ -103,7 +90,7 @@ def search(query, indexer: Indexer, K=10):
     # We store scores as (score, docId)
     # heapify uses the first attribute, so we want to 'sort' by score
     # then afterwards, we retain the docId as the return value
-    scores = {}
+    scores = defaultdict(float)
     length = indexer.get_doc_length()   
     # Obtain the term counts to avoid doing repeated work
     term_counts = get_term_freq(query)
@@ -114,20 +101,20 @@ def search(query, indexer: Indexer, K=10):
     for term in set(query):
         w_t_q = query_vector[term]
         pl = indexer.get_posting_list(term)
-        for posting in pl:
+        if pl is None:
+            continue
+        for posting in pl.plist:
             d = posting.docId
-            if d not in scores:
-                scores[d] = Score(0, d)
             # Alr precomputed
             w_t_d = posting.tf
-            scores[d].score += w_t_d * w_t_q
+            scores[d] += w_t_d * w_t_q
     for docId in scores.keys():
-        scores[docId].score = scores[docId].score / length[docId]
+        scores[docId] = scores[docId] / length[docId]
     # Invert the docId since we are interested in
     # ascending docId as tiebreakers.
     # The heapq is largest, so inverting will make the
-    # smaller ones go first 
-    heap = [(s.score, -s.docId) for s in scores.values()]
+    # smaller ones go first
+    heap = [(score, -docId) for docId, score in scores.items()] 
     heap = heapq.nlargest(K, heap)
     results = [-item[1] for item in heap]
     return results
@@ -141,13 +128,15 @@ def run_search(dict_file, postings_file, queries_file, results_file, K=10):
     K = top K documents to retrieve
     """
     print('running search on the queries...')
+    start_time = time.time()
     indexer = Indexer(dict_file, postings_file)
     with open(queries_file, "r") as qf, open(results_file, "w") as wf:
-        import tqdm
-        for i, line in enumerate(tqdm.tqdm(qf.readlines())):
+        for line in qf.readlines():
             line = line.strip()
             docIds = search(line, indexer, K=K)
             wf.write(" ".join(list(map(str, docIds))) + "\n")
+    end_time = time.time()
+    print(f"Execution time: {end_time - start_time}")
 
 
 if __name__ == "__main__":
@@ -174,5 +163,6 @@ if __name__ == "__main__":
     if dictionary_file == None or postings_file == None or file_of_queries == None or file_of_output == None :
         usage()
         sys.exit(2)
-
     run_search(dictionary_file, postings_file, file_of_queries, file_of_output)
+    # with Profile() as profile:
+    #     Stats(profile).strip_dirs().sort_stats(SortKey.CALLS).print_stats()
