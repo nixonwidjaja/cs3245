@@ -106,6 +106,9 @@ class Indexer:
         words = []
         for sent in sentences:
             words.extend(nltk.word_tokenize(sent))
+        # In general, case folding should be the last step since the case
+        # itself is commonly used to indicate some linguistic information 
+        # such as proper nouns/start of a sentence - Zhao Jin
         singles = [self.stemmer.stem(w.lower(), to_lowercase=True) for w in words]
         return singles
     
@@ -134,7 +137,12 @@ class Indexer:
             # As seen in piazza, normalisation of the 
             # doc length should be based on the 
             # log(tf) + 1 values instead of raw freq
-            all_tfs = [(1 + math.log(p.tf, 10)) for p in sub_dict.values()]
+            # Pre-compute the tf weights
+            all_tfs = []
+            for k, p in sub_dict.items():
+                precomputed_tf = 1 + math.log(p.tf, 10) 
+                p.tf = precomputed_tf
+                all_tfs.append(precomputed_tf)
             max_doc_id = max(max_doc_id, docId)
             self.doc_lengths[docId] = math.hypot(*all_tfs)
             # Now we have the docId and tf for all the terms, add it to dict
@@ -202,6 +210,11 @@ class Indexer:
         if term not in self.doc_lengths:
             return self.doc_lengths[term]
         return 1
+    
+    def get_doc_length(self):
+        if not self.doc_lengths:
+            self.load()
+        return self.doc_lengths
 
 
 def usage():
