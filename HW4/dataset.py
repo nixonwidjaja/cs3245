@@ -30,7 +30,7 @@ def _set_csv_limit_to_max():
 class Dataset:
     """Handles the loading of dataset."""
 
-    CACHE_FILE_PATH = "cached_content_tokens.pkl"
+    CACHE_FILE_PATH = f"cached_content_tokens.{Preprocessor.PREPROCESSING_MODE}.pkl"
 
     @staticmethod
     def load_dataset_stream(dataset_path: str) -> Iterator[DataElement]:
