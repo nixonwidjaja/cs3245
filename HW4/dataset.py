@@ -30,7 +30,7 @@ def _set_csv_limit_to_max():
 class Dataset:
     """Handles the loading of dataset."""
 
-    CACHE_FILE_PATH = f"cached_content_tokens.{Preprocessor.PREPROCESSING_MODE}.pkl"
+    CACHE_FILE_PATH = f"cache/content_tokens.{Preprocessor.PREPROCESSING_MODE}.pkl"
 
     @staticmethod
     def load_dataset_stream(dataset_path: str) -> Iterator[DataElement]:
@@ -135,6 +135,7 @@ class Dataset:
             tokens_list.append((element["document_id"], tokens))
 
         if save_cache:
+            os.makedirs(os.path.dirname(Dataset.CACHE_FILE_PATH), exist_ok=True)
             with open(Dataset.CACHE_FILE_PATH, "wb") as f:
                 pickle.dump(tokens_list, f)
 

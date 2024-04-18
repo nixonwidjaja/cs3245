@@ -2,6 +2,7 @@
 # "content" field.
 
 import multiprocessing
+import os
 import pickle
 import time
 
@@ -24,6 +25,7 @@ if __name__ == "__main__":
     with multiprocessing.Pool(processes=NUM_PROCESSES) as pool:
         tokens_list = pool.map(process_element, dataset)
 
+    os.makedirs(os.path.dirname(Dataset.CACHE_FILE_PATH), exist_ok=True)
     with open(Dataset.CACHE_FILE_PATH, "wb") as f:
         pickle.dump(tokens_list, f)
 
