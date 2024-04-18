@@ -43,7 +43,7 @@ def run_search(
     queries_path: str,
     out_results_path: str,
 ) -> None:
-    print("running search on the queries...")
+    print(f'Searching for the query "{queries_path}" ...')
     start_time = time.time()
 
     # Load the input query/relevant Doc-IDs.
@@ -91,7 +91,7 @@ def run_search(
         f.write(" ".join(output_doc_ids))
 
     end_time = time.time()
-    print(f"Execution time: {end_time - start_time}s")
+    print(f"Execution time: {end_time - start_time:.1f}s")
 
     for doc_id in relevant_doc_ids:
         print(f"{doc_id:10}: Rank {output_doc_ids.index(doc_id)}")

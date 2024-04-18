@@ -62,7 +62,7 @@ def build_index(dataset_path: str, out_dict_path: str, out_postings_path: str) -
         pickle.dump((term_metadata, doc_norm_lengths), dict_f)
 
     end_time = time.time()
-    print(f"Execution time: {end_time - start_time}s")
+    print(f"Execution time: {end_time - start_time:.1f}s")
 
 
 input_directory = output_file_dictionary = output_file_postings = None

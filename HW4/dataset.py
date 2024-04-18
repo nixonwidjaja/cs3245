@@ -115,6 +115,7 @@ class Dataset:
         """
         # Return cache if exists.
         if os.path.exists(Dataset.CACHE_FILE_PATH):
+            print(f'Using cache at "{Dataset.CACHE_FILE_PATH}"')
             with open(Dataset.CACHE_FILE_PATH, "rb") as f:
                 tokens_list = pickle.load(f)
 

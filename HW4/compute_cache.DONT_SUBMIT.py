@@ -30,4 +30,6 @@ if __name__ == "__main__":
         pickle.dump(tokens_list, f)
 
     end_time = time.time()
-    print(f"Tokenization time: {end_time - start_time:.2f} seconds")
+    print(
+        f"Multiprocessing ({NUM_PROCESSES} processes) tokenization time: {end_time - start_time:.1f}s"
+    )
