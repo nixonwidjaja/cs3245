@@ -2,14 +2,10 @@
 import getopt
 import heapq
 import math
-import re
 import sys
 import time
 from collections import Counter, defaultdict
 from functools import cmp_to_key
-from operator import index
-
-import nltk
 
 from indexer import Indexer
 from preprocessor import Preprocessor
@@ -19,7 +15,7 @@ def usage():
     print(
         "usage: "
         + sys.argv[0]
-        + " -d dictionary-file -p postings-file -q file-of-queries -o output-file-of-results"
+        + " -d dictionary-file -p postings-file -q query-file -o output-file-of-results"
     )
 
 
@@ -40,23 +36,24 @@ def compare_tuples(v1: tuple[float, int], v2: tuple[float, int]) -> int:
         return 1
 
 
-def run_search(dict_file, postings_file, queries_file, results_file):
-    """
-    using the given dictionary file and postings file,
-    perform searching on the given queries file and output the results to a file
-    """
+def run_search(
+    dict_path: str,
+    postings_path: str,
+    queries_path: str,
+    out_results_path: str,
+) -> None:
     print("running search on the queries...")
     start_time = time.time()
 
     with (
-        Indexer(dict_file, postings_file) as indexer,
-        open(queries_file, "r") as oqueries,
-        open(results_file, "w") as oresults,
+        Indexer(dict_path, postings_path) as indexer,
+        open(queries_path, "r") as queries_f,
+        open(out_results_path, "w") as results_f,
     ):
         is_first_line: bool = True
         N: int = indexer.num_docs
 
-        for query in oqueries:
+        for query in queries_f:
             query = query.rstrip("\n")
             tf_dict = Counter(Preprocessor.to_token_stream(query))
 
@@ -90,7 +87,7 @@ def run_search(dict_file, postings_file, queries_file, results_file):
             top_doc_ids = [str(doc_id) for _, doc_id in top_items]
 
             padding = "" if is_first_line else "\n"
-            oresults.write(padding + " ".join(top_doc_ids))
+            results_f.write(padding + " ".join(top_doc_ids))
             is_first_line = False
 
     end_time = time.time()
