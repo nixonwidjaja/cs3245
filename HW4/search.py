@@ -90,6 +90,9 @@ def run_search(
     end_time = time.time()
     print(f"Execution time: {end_time - start_time}s")
 
+    for doc_id in relevant_doc_ids:
+        print(f"{doc_id:10}: Rank {output_doc_ids.index(doc_id)}")
+
 
 dictionary_file = postings_file = file_of_queries = output_file_of_results = None
 
