@@ -3,9 +3,10 @@ import getopt
 import math
 import sys
 import time
-from collections import Counter, defaultdict
+from collections import defaultdict
 from functools import cmp_to_key
 
+import nltk
 from indexer import Indexer
 from preprocessor import Preprocessor
 
@@ -51,7 +52,7 @@ def run_search(
     # Compute scores.
     with Indexer(dict_path, postings_path) as indexer:
         N = indexer.num_docs
-        tf_dict = Counter(Preprocessor.to_token_stream(query))
+        tf_dict = nltk.FreqDist(Preprocessor.to_token_stream(query))
 
         # Compute un-normalized scores first.
         query_norm_length = 0

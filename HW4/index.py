@@ -4,8 +4,8 @@ import math
 import pickle
 import sys
 import time
-from collections import Counter
 
+import nltk
 from dataset import Dataset
 from tqdm.autonotebook import tqdm
 
@@ -22,7 +22,7 @@ def build_index(dataset_path: str, out_dict_path: str, out_postings_path: str) -
     inverted_index: dict[str, list[tuple[int, int]]] = {}
 
     for doc_id, tokens in tqdm(Dataset.get_tokenized_content_list(dataset_path)):
-        tf_dict = Counter(tokens)
+        tf_dict = nltk.FreqDist(tokens)
         doc_norm_lengths[doc_id] = math.sqrt(
             sum((1 + math.log10(tf)) ** 2 for tf in tf_dict.values())
         )
