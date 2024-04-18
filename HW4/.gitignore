@@ -1,2 +1,9 @@
-/dataset.csv
-/dataset.zip
+*.temp.*
+*.temp
+temp.*
+*.pkl
+
+dataset.csv
+dataset.zip
+dictionary.*txt
+postings.*txt
