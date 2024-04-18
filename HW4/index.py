@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 import getopt
 import math
+import pickle
 import sys
 from collections import Counter
 
@@ -28,26 +29,34 @@ def build_index(dataset_path: str, out_dict_path: str, out_postings_path: str) -
             postings_list.append((doc_id, tf))
             inverted_index[term] = postings_list
 
-    with (
-        open(out_dict_path, "w") as dict_f,
-        open(out_postings_path, "w") as post_f,
-    ):
+    term_metadata: dict[str, tuple[int, int, int]] = {}
+
+    with open(out_postings_path, "wb") as post_f:
         start_offset = 0
         for term, postings_list in inverted_index.items():
-            # Write the DF, offset and size for each term into dictionary file.
-            post_f.write(f'{" ".join([f"({doc_id},{tf})" for doc_id, tf in postings_list])}\n')
+            post_f.write(pickle.dumps(postings_list))
             end_offset = post_f.tell()
             size = end_offset - start_offset
 
-            # Write the DF, offset and size for each term into dictionary file.
             df = len(postings_list)
-            dict_f.write(f"{term} {df} {start_offset} {size}\n")
-            start_offset = end_offset
-        dict_f.write("\n")
+            term_metadata[term] = (df, start_offset, size)
 
-        # Append the normalized lengths to dictionary file.
-        for docid, length in doc_norm_lengths.items():
-            dict_f.write(f"{docid} {length}\n")
+            start_offset = end_offset
+
+    with open(out_postings_path, "wb") as post_f:
+        start_offset = 0
+        for term, postings_list in inverted_index.items():
+            post_f.write(pickle.dumps(postings_list))
+            end_offset = post_f.tell()
+            size = end_offset - start_offset
+
+            df = len(postings_list)
+            term_metadata[term] = (df, start_offset, size)
+
+            start_offset = end_offset
+
+    with open(out_dict_path, "wb") as dict_f:
+        pickle.dump((term_metadata, doc_norm_lengths), dict_f)
 
 
 input_directory = output_file_dictionary = output_file_postings = None
