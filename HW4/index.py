@@ -3,6 +3,7 @@ import getopt
 import math
 import pickle
 import sys
+import time
 from collections import Counter
 
 from dataset import Dataset
@@ -15,6 +16,8 @@ def usage():
 
 def build_index(dataset_path: str, out_dict_path: str, out_postings_path: str) -> None:
     print("indexing...")
+    start_time = time.time()
+
     doc_norm_lengths: dict[int, float] = {}
     inverted_index: dict[str, list[tuple[int, int]]] = {}
 
@@ -57,6 +60,9 @@ def build_index(dataset_path: str, out_dict_path: str, out_postings_path: str) -
 
     with open(out_dict_path, "wb") as dict_f:
         pickle.dump((term_metadata, doc_norm_lengths), dict_f)
+
+    end_time = time.time()
+    print(f"Execution time: {end_time - start_time}s")
 
 
 input_directory = output_file_dictionary = output_file_postings = None
