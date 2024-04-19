@@ -1,4 +1,5 @@
 import csv
+import itertools
 import os
 import sys
 from typing import Iterator, TypedDict
@@ -100,6 +101,7 @@ class Dataset:
     @staticmethod
     def get_tokenized_content_stream(
         dataset_path: str,
+        save_cache: bool = False,
         validate_cache: bool = True,
     ) -> Iterator[tuple[int, list[str]]]:
         """Yields tuples of `(Doc-ID, token_list)`, one for each document, where
@@ -109,6 +111,8 @@ class Dataset:
 
         Args:
             dataset_path (str): Path to the CSV dataset file.
+            save_cache (bool, optional): Whether to save a cache of the computed tokens. \
+                Defaults to False.
             validate_cache (bool, optional): Whether to validate the cached tokens list \
                 (if it exists). Defaults to True.
         """
@@ -139,6 +143,17 @@ class Dataset:
                 except StopIteration:
                     pass
 
+            return
+
+        if save_cache:
+            with open(Dataset.CACHE_FILE_PATH, "w", newline="") as f:
+                writer = csv.writer(f)
+                for element in tqdm(
+                    Dataset.load_dataset_stream(dataset_path), total=Dataset.NUM_DOCUMENTS
+                ):
+                    tokens = list(Preprocessor.to_token_stream(element["content"]))
+                    yield element["document_id"], tokens
+                    writer.writerow(itertools.chain([element["document_id"]], tokens))
             return
 
         for element in tqdm(Dataset.load_dataset_stream(dataset_path), total=Dataset.NUM_DOCUMENTS):
