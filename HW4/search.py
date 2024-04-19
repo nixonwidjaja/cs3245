@@ -1,11 +1,8 @@
 #!/usr/bin/python3
 import getopt
-import math
 import sys
 import time
-from collections import defaultdict
 
-import nltk
 from indexer import Indexer
 from query_parser import QueryParser
 from scorer import Scorer
