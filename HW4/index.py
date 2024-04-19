@@ -33,19 +33,6 @@ def build_index(dataset_path: str, out_dict_path: str, out_postings_path: str) -
             inverted_index[term] = postings_list
 
     term_metadata: dict[str, tuple[int, int, int]] = {}
-
-    with open(out_postings_path, "wb") as post_f:
-        start_offset = 0
-        for term, postings_list in inverted_index.items():
-            post_f.write(pickle.dumps(postings_list))
-            end_offset = post_f.tell()
-            size = end_offset - start_offset
-
-            df = len(postings_list)
-            term_metadata[term] = (df, start_offset, size)
-
-            start_offset = end_offset
-
     with open(out_postings_path, "wb") as post_f:
         start_offset = 0
         for term, postings_list in inverted_index.items():
