@@ -56,7 +56,6 @@ def run_search(
         tf_dict = nltk.FreqDist(query_tokens)
 
         # Compute un-normalized scores first.
-        query_norm_length = 0
         scores: dict[int, float] = defaultdict(lambda: 0.0)
         for term, tf in tf_dict.items():
             df, postings_list = indexer.get_term_data(term)
@@ -66,18 +65,15 @@ def run_search(
                 continue
 
             query_weight = (1 + math.log10(tf)) * math.log10(N / df)  # Log-TF-IDF for query.
-            query_norm_length += query_weight**2
 
             for doc_id, tf in postings_list:
                 doc_weight = 1 + math.log10(tf)  # Log-TF (w/o IDF) for documents.
                 scores[doc_id] += doc_weight * query_weight
 
-        query_norm_length = math.sqrt(query_norm_length)
-
         # Do cosine normalization on the scores.
         for doc_id in scores.keys():
             doc_norm_length = indexer.doc_norm_lengths[doc_id]
-            scores[doc_id] /= doc_norm_length * query_norm_length
+            scores[doc_id] /= doc_norm_length
 
     # Sort scores (tie break by doc-ID).
     elements = [(-score, doc_id) for doc_id, score in scores.items()]
