@@ -112,7 +112,7 @@ class Dataset:
             validate_cache (bool, optional): Whether to validate the cached tokens list \
                 (if it exists). Defaults to True.
         """
-        # Return cache if exists.
+        # Load from cache if exists.
         if os.path.exists(Dataset.CACHE_FILE_PATH):
             print(f'Using cache at "{Dataset.CACHE_FILE_PATH}"')
 

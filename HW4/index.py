@@ -11,7 +11,13 @@ from tqdm.autonotebook import tqdm
 
 
 def usage():
-    print("usage: " + sys.argv[0] + " -i dataset-file -d dictionary-file -p postings-file")
+    filename = sys.argv[0]
+    print(
+        f"usage: {filename}"
+        + " -i dataset-file"
+        + " -d dictionary-file"
+        + " -p postings-file"
+    )  # fmt:skip
 
 
 def build_index(dataset_path: str, out_dict_path: str, out_postings_path: str) -> None:

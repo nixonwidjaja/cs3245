@@ -13,8 +13,13 @@ from preprocessor import Preprocessor, convert_pos_to_wordnet_pos
 
 
 class QueryParser:
+    """Handles parsing of query string, and performing query-expansion via
+    WordNet.
+    """
+
     @staticmethod
     def get_query_tokens(query: str) -> list[str]:
+        """Preprocess the query into tokens, including applying query-expansion."""
         assert Preprocessor.PREPROCESSING_MODE in ["stem", "lemma_wo_pos", "lemma_with_pos"], \
             "We forgot to update this function after updating `Preprocessor.PREPROCESSING_MODE`."  # fmt:skip
 
@@ -47,7 +52,7 @@ class QueryParser:
         return list(token_set)
 
     @staticmethod
-    def get_synonyms(token: str, wordnet_pos: str = wordnet.NOUN) -> set[str]:
+    def get_synonyms(token: str, wordnet_pos: str | None = wordnet.NOUN) -> set[str]:
         synonyms: set[str] = set()
         for syn in cast(list[Synset], wordnet.synsets(token, wordnet_pos)):
             for lemma in cast(list[str], syn.lemma_names()):

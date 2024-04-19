@@ -9,10 +9,13 @@ from scorer import Scorer
 
 
 def usage():
+    filename = sys.argv[0]
     print(
-        "usage: "
-        + sys.argv[0]
-        + " -d dictionary-file -p postings-file -q query-file -o output-file-of-results"
+        f"usage: {filename}"
+        + " -d dictionary-file"
+        + " -p postings-file"
+        + " -q query-file"
+        + " -o output-file-of-results"
     )
 
 
