@@ -69,3 +69,7 @@ class Preprocessor:
         with open(filepath, "r") as file:
             doc_text = file.read()
             yield from Preprocessor.to_token_stream(doc_text)
+
+
+if __name__ == "__main__":
+    print(Preprocessor.PREPROCESSING_MODE)
