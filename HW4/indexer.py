@@ -12,8 +12,8 @@ class Indexer:
             postings_file_path (str): Path to file containing all the postings lists.
         """
         self.postings_file_io = open(postings_file_path, "rb")
-        (self.term_metadata,) = self._load_data_from_dict_file(dict_file_path)
-        self.num_docs: int = 17137
+        self.term_metadata, self.doc_metadata = self._load_data_from_dict_file(dict_file_path)
+        self.num_docs: int = len(self.doc_metadata)
 
     def __enter__(self) -> "Indexer":
         return self
@@ -28,35 +28,26 @@ class Indexer:
     @staticmethod
     def _load_data_from_dict_file(
         dict_file_path: str,
-    ) -> tuple[dict[str, tuple[int, int, int]]]:
+    ) -> tuple[dict[str, tuple[int, int, int]], dict[int, tuple[int, int]]]:
         """Loads the data from the dictionary file into memory.
 
         Specifically, it loads:
         - `term_metadata`: DF, offset, size for each term
-          (where offset and size are used to seek/read from the postings file).
-
-        Format of dictionary file:
-        Bytes of the pickled `(term_metadata, doc_norm_lengths)` tuple.
+          (where offset and size are used to seek/read the postings list from the postings file).
+        - `doc_metadata`: Cosine-normalization length, offset, size for each doc-ID
+          (where offset and size are used to seek/read the doc vector from the postings file).
 
         Returns:
-            tuple[dict[str, tuple[int, int, int]]]: \
-                `(term_metadata, doc_norm_lengths)`.
+            tuple[dict[str, tuple[int, int, int]], dict[int, tuple[int, int]]]: \
+                `(term_metadata, doc_metadata)`.
         """
         with open(dict_file_path, "rb") as f:
-            (term_metadata,) = pickle.load(f)
-            return (term_metadata,)
+            term_metadata, doc_metadata = pickle.load(f)
+            return term_metadata, doc_metadata
 
     def get_term_data(self, term: str) -> tuple[int, list[tuple[int, int]]]:
-        """Gets a term's DF (from dictionary file) and postings list (from
-        postings file).
-
-        The postings list is in the form:
-        ```
-        [(DOC_ID, TF), ...]
-        ```
-
-        Format of postings file:
-        Bytes of all pickled postings lists.
+        """Returns `(df, postings_list)`, the term's DF (from dictionary file)
+        and postings list (from postings file).
 
         Returns:
             tuple[int, list[tuple[int, int]]]: `(df, postings_list)`
@@ -76,3 +67,10 @@ class Indexer:
 
         df, *_ = self.term_metadata[term]
         return df
+
+    def get_doc_vector(self, doc_id: int) -> dict[str, float]:
+        """Gets a document's weight vector (from postings file)."""
+        offset, size = self.doc_metadata[doc_id]
+        self.postings_file_io.seek(offset)
+        doc_vector = pickle.loads(self.postings_file_io.read(size))
+        return doc_vector

@@ -37,6 +37,11 @@ def run_search(
         query_tokens = QueryParser.get_query_tokens(query)
         scorer = Scorer(indexer)
         scorer.init_term_weights(query_tokens)
+        scorer.apply_pseudo_relevance_feedback(
+            alpha=0.9,
+            n_relevant=5,
+            beta=0.1,
+        )
         scores = scorer.get_doc_scores()
 
     # Sort scores (tie break by doc-ID).
