@@ -1,4 +1,5 @@
 import csv
+import itertools
 import os
 import pickle
 import sys
@@ -31,6 +32,9 @@ class Dataset:
     """Handles the loading of dataset."""
 
     CACHE_FILE_PATH = f"cache/content_tokens.{Preprocessor.PREPROCESSING_MODE}.pkl"
+
+    NUM_DOCUMENTS = 17137
+    """Total num. of documents in the dataset (doesn't include duplicate Doc-IDs)."""
 
     @staticmethod
     def load_dataset_stream(dataset_path: str) -> Iterator[DataElement]:
@@ -96,20 +100,17 @@ class Dataset:
             yield last_element
 
     @staticmethod
-    def get_tokenized_content_list(
+    def get_tokenized_content_stream(
         dataset_path: str,
-        save_cache: bool = False,
         validate_cache: bool = True,
-    ) -> list[tuple[int, list[str]]]:
-        """Get list of `(Doc-ID, token_list)` tuples, where `token_list` is a
-        tokens of the document's `"content"`.
+    ) -> Iterator[tuple[int, list[str]]]:
+        """Yields tuples of `(Doc-ID, token_list)`, one for each document, where
+        `token_list` is the tokens of the document's `"content"`.
 
         If a precomputed cache of the tokens list exists, load the cache instead.
 
         Args:
             dataset_path (str): Path to the CSV dataset file.
-            save_cache (bool, optional): Whether to cache the tokens list after computing. \
-                Defaults to True.
             validate_cache (bool, optional): Whether to validate the cached tokens list \
                 (if it exists). Defaults to True.
         """
@@ -121,23 +122,16 @@ class Dataset:
 
             if validate_cache:
                 # Validate that every 500th element matches the cache, to ensure the cache is correct.
-                dataset = list(Dataset.load_dataset_stream(dataset_path))
-                assert len(dataset) == len(tokens_list)
-                for element, (doc_id, tokens) in zip(dataset[::500], tokens_list[::500]):
+                islice_500 = lambda x: itertools.islice(x, 0, None, 500)
+                subset_dataset = list(islice_500(Dataset.load_dataset_stream(dataset_path)))
+                subset_tokens = list(islice_500(tokens_list))
+                assert len(subset_dataset) == len(subset_tokens)
+                for element, (doc_id, tokens) in zip(subset_dataset, subset_tokens):
                     assert doc_id == element["document_id"]
                     assert tokens == list(Preprocessor.to_token_stream(element["content"]))
 
-            return tokens_list
+            return iter(tokens_list)
 
-        dataset = list(Dataset.load_dataset_stream(dataset_path))
-        tokens_list: list[tuple[int, list[str]]] = []
-        for element in tqdm(dataset):
+        for element in tqdm(Dataset.load_dataset_stream(dataset_path), total=Dataset.NUM_DOCUMENTS):
             tokens = list(Preprocessor.to_token_stream(element["content"]))
-            tokens_list.append((element["document_id"], tokens))
-
-        if save_cache:
-            os.makedirs(os.path.dirname(Dataset.CACHE_FILE_PATH), exist_ok=True)
-            with open(Dataset.CACHE_FILE_PATH, "wb") as f:
-                pickle.dump(tokens_list, f)
-
-        return tokens_list
+            yield element["document_id"], tokens
