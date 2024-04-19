@@ -33,7 +33,7 @@ if __name__ == "__main__":
     with open(Dataset.CACHE_FILE_PATH, "w", newline="") as f:
         writer = csv.writer(f)
         for doc_id, tokens in tokens_list:
-            writer.writerow(itertools.chain([str(doc_id)], tokens))
+            writer.writerow(itertools.chain([doc_id], tokens))
 
     end_time = time.time()
     print(
