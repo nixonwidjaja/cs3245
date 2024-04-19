@@ -55,21 +55,6 @@ class Preprocessor:
                         wordnet_pos = convert_pos_to_wordnet_pos(pos)
                         yield Preprocessor.lemmatizer.lemmatize(token, wordnet_pos).lower()
 
-    @staticmethod
-    def file_to_token_stream(filepath: str) -> Iterator[str]:
-        """Read the ENTIRE file at `filepath`, preprocessing using
-        `Preprocessor.to_token_stream` to yield the tokens one-by-one.
-
-        Args:
-            filepath (str): Path to the file to tokenize.
-
-        Yields:
-            Iterator[str]: Tokens from the file.
-        """
-        with open(filepath, "r") as file:
-            doc_text = file.read()
-            yield from Preprocessor.to_token_stream(doc_text)
-
 
 if __name__ == "__main__":
     print(Preprocessor.PREPROCESSING_MODE)
