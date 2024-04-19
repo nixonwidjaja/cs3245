@@ -18,20 +18,16 @@ def build_index(dataset_path: str, out_dict_path: str, out_postings_path: str) -
     print("indexing...")
     start_time = time.time()
 
-    doc_norm_lengths: dict[int, float] = {}
-    inverted_index: dict[str, list[tuple[int, int]]] = {}
-
+    inverted_index: dict[str, list[tuple[int, float]]] = {}
     for doc_id, tokens in tqdm(
         Dataset.get_tokenized_content_stream(dataset_path), total=Dataset.NUM_DOCUMENTS
     ):
         tf_dict = nltk.FreqDist(tokens)
-        doc_norm_lengths[doc_id] = math.sqrt(
-            sum((1 + math.log10(tf)) ** 2 for tf in tf_dict.values())
-        )
+        norm_len = math.sqrt(sum((1 + math.log10(tf)) ** 2 for tf in tf_dict.values()))
 
         for term, tf in tf_dict.items():
             postings_list = inverted_index.get(term, [])
-            postings_list.append((doc_id, tf))
+            postings_list.append((doc_id, (1 + math.log10(tf)) / norm_len))
             inverted_index[term] = postings_list
 
     term_metadata: dict[str, tuple[int, int, int]] = {}
@@ -48,7 +44,7 @@ def build_index(dataset_path: str, out_dict_path: str, out_postings_path: str) -
             start_offset = end_offset
 
     with open(out_dict_path, "wb") as dict_f:
-        pickle.dump((term_metadata, doc_norm_lengths), dict_f)
+        pickle.dump((term_metadata,), dict_f)
 
     end_time = time.time()
     print(f"Execution time: {end_time - start_time:.1f}s")

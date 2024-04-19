@@ -27,12 +27,7 @@ class Scorer:
         for term, query_weight in self.query_weight.items():
             df, postings_list = self.indexer.get_term_data(term)
 
-            for doc_id, tf in postings_list:
-                doc_weight = 1 + math.log10(tf)
+            for doc_id, doc_weight in postings_list:
                 scores[doc_id] += doc_weight * query_weight
 
-        # Do cosine normalization on the scores.
-        for doc_id in scores.keys():
-            doc_norm_length = self.indexer.doc_norm_lengths[doc_id]
-            scores[doc_id] /= doc_norm_length
         return scores

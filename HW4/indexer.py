@@ -12,8 +12,8 @@ class Indexer:
             postings_file_path (str): Path to file containing all the postings lists.
         """
         self.postings_file_io = open(postings_file_path, "rb")
-        self.term_metadata, self.doc_norm_lengths = self._load_data_from_dict_file(dict_file_path)
-        self.num_docs: int = len(self.doc_norm_lengths)
+        (self.term_metadata,) = self._load_data_from_dict_file(dict_file_path)
+        self.num_docs: int = 17137
 
     def __enter__(self) -> "Indexer":
         return self
@@ -28,24 +28,23 @@ class Indexer:
     @staticmethod
     def _load_data_from_dict_file(
         dict_file_path: str,
-    ) -> tuple[dict[str, tuple[int, int, int]], dict[int, float]]:
+    ) -> tuple[dict[str, tuple[int, int, int]]]:
         """Loads the data from the dictionary file into memory.
 
         Specifically, it loads:
         - `term_metadata`: DF, offset, size for each term
           (where offset and size are used to seek/read from the postings file).
-        - `doc_norm_lengths`: Cosine-normalization lengths for each doc-ID.
 
         Format of dictionary file:
         Bytes of the pickled `(term_metadata, doc_norm_lengths)` tuple.
 
         Returns:
-            tuple[dict[str, tuple[int, int, int]], dict[int, float]]: \
+            tuple[dict[str, tuple[int, int, int]]]: \
                 `(term_metadata, doc_norm_lengths)`.
         """
         with open(dict_file_path, "rb") as f:
-            term_metadata, doc_norm_lengths = pickle.load(f)
-            return term_metadata, doc_norm_lengths
+            (term_metadata,) = pickle.load(f)
+            return (term_metadata,)
 
     def get_term_data(self, term: str) -> tuple[int, list[tuple[int, int]]]:
         """Gets a term's DF (from dictionary file) and postings list (from
