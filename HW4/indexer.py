@@ -14,6 +14,7 @@ class Indexer:
         self.postings_file_io = open(postings_file_path, "rb")
         self.term_metadata, self.doc_metadata = self._load_data_from_dict_file(dict_file_path)
         self.num_docs: int = len(self.doc_metadata)
+        self.doc_ids = list(self.doc_metadata.keys())
 
     def __enter__(self) -> "Indexer":
         return self

@@ -41,6 +41,8 @@ def run_search(
             alpha=0.9,
             n_relevant=5,
             beta=0.1,
+            n_irrelevant=100,
+            gamma=0.1,
         )
         scores = scorer.get_doc_scores()
 

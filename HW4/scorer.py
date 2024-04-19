@@ -1,5 +1,6 @@
 import heapq
 import math
+import random
 from collections import defaultdict
 
 import nltk
@@ -89,6 +90,8 @@ class Scorer:
         alpha: float = 1,
         n_relevant: int = 0,
         beta: float = 0,
+        n_irrelevant: int = 0,
+        gamma: float = 0,
     ) -> None:
         """Update query weights by doing Relevance-Feedback using the top
         scoring `n_relevant` num. of documents.
@@ -98,9 +101,13 @@ class Scorer:
             n_relevant (int, optional): Num. of top scoring documents to use for \
                 Relevance Feedback. Defaults to 0.
             beta (float, optional): Scaling for relevant docs. Defaults to 0.
+            n_irrelevant (int, optional): Num. of bottom scoring documents to use for \
+                Relevance Feedback. Defaults to 0.
+            gamma (float, optional): Scaling for irrelevant docs. Defaults to 0.
         """
         scores = self.get_doc_scores()
         relevant_doc_ids: list[int] = []
+        irrelevant_doc_ids: list[int] = []
 
         if beta and n_relevant:
             relevant_doc_ids = heapq.nlargest(
@@ -109,8 +116,19 @@ class Scorer:
                 key=lambda doc_id: scores[doc_id],
             )
 
+        if gamma and n_irrelevant:
+            doc_ids = list(self.indexer.doc_ids)
+            random.Random(42).shuffle(doc_ids)
+            irrelevant_doc_ids = heapq.nsmallest(
+                n_irrelevant,
+                doc_ids,
+                key=lambda doc_id: scores.get(doc_id, 0.0),
+            )
+
         self.apply_relevance_feedback(
             alpha=alpha,
             relevant_doc_ids=relevant_doc_ids,
             beta=beta,
+            irrelevant_doc_ids=irrelevant_doc_ids,
+            gamma=gamma,
         )
