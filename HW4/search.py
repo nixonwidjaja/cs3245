@@ -9,6 +9,7 @@ from functools import cmp_to_key
 import nltk
 from indexer import Indexer
 from query_parser import QueryParser
+from scorer import Scorer
 
 
 def usage():
@@ -51,29 +52,10 @@ def run_search(
 
     # Compute scores.
     with Indexer(dict_path, postings_path) as indexer:
-        N = indexer.num_docs
         query_tokens = QueryParser.get_query_tokens(query)
-        tf_dict = nltk.FreqDist(query_tokens)
-
-        # Compute un-normalized scores first.
-        scores: dict[int, float] = defaultdict(lambda: 0.0)
-        for term, tf in tf_dict.items():
-            df, postings_list = indexer.get_term_data(term)
-
-            # Ignore terms that don't appear in any docs.
-            if df == 0:
-                continue
-
-            query_weight = (1 + math.log10(tf)) * math.log10(N / df)  # Log-TF-IDF for query.
-
-            for doc_id, tf in postings_list:
-                doc_weight = 1 + math.log10(tf)  # Log-TF (w/o IDF) for documents.
-                scores[doc_id] += doc_weight * query_weight
-
-        # Do cosine normalization on the scores.
-        for doc_id in scores.keys():
-            doc_norm_length = indexer.doc_norm_lengths[doc_id]
-            scores[doc_id] /= doc_norm_length
+        scorer = Scorer(indexer)
+        scorer.init_term_weights(query_tokens)
+        scores = scorer.get_doc_scores()
 
     # Sort scores (tie break by doc-ID).
     elements = [(-score, doc_id) for doc_id, score in scores.items()]

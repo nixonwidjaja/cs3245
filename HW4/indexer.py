@@ -48,7 +48,7 @@ class Indexer:
             return term_metadata, doc_norm_lengths
 
     def get_term_data(self, term: str) -> tuple[int, list[tuple[int, int]]]:
-        """Gets the term's DF (from dictionary file) and postings list (from
+        """Gets a term's DF (from dictionary file) and postings list (from
         postings file).
 
         The postings list is in the form:
@@ -69,3 +69,11 @@ class Indexer:
         self.postings_file_io.seek(offset)
         postings_list = pickle.loads(self.postings_file_io.read(size))
         return df, postings_list
+
+    def get_df(self, term: str) -> int:
+        """Gets a term's DF (from dictionary file)."""
+        if term not in self.term_metadata:
+            return 0
+
+        df, *_ = self.term_metadata[term]
+        return df
