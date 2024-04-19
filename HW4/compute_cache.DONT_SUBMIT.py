@@ -1,9 +1,10 @@
 # Use multi-processing to quickly compute and cache the tokens of the dataset's
 # "content" field.
 
+import csv
+import itertools
 import multiprocessing
 import os
-import pickle
 import time
 
 from dataset import DataElement, Dataset
@@ -26,8 +27,10 @@ if __name__ == "__main__":
         tokens_list = pool.map(process_element, dataset)
 
     os.makedirs(os.path.dirname(Dataset.CACHE_FILE_PATH), exist_ok=True)
-    with open(Dataset.CACHE_FILE_PATH, "wb") as f:
-        pickle.dump(tokens_list, f)
+    with open(Dataset.CACHE_FILE_PATH, "w", newline="") as f:
+        writer = csv.writer(f)
+        for doc_id, tokens in tokens_list:
+            writer.writerow(itertools.chain([str(doc_id)], tokens))
 
     end_time = time.time()
     print(

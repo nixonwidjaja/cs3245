@@ -1,7 +1,5 @@
 import csv
-import itertools
 import os
-import pickle
 import sys
 from typing import Iterator, TypedDict
 
@@ -31,7 +29,7 @@ def _set_csv_limit_to_max():
 class Dataset:
     """Handles the loading of dataset."""
 
-    CACHE_FILE_PATH = f"cache/content_tokens.{Preprocessor.PREPROCESSING_MODE}.pkl"
+    CACHE_FILE_PATH = f"cache/content_tokens.{Preprocessor.PREPROCESSING_MODE}.csv"
 
     NUM_DOCUMENTS = 17137
     """Total num. of documents in the dataset (doesn't include duplicate Doc-IDs)."""
@@ -117,20 +115,31 @@ class Dataset:
         # Return cache if exists.
         if os.path.exists(Dataset.CACHE_FILE_PATH):
             print(f'Using cache at "{Dataset.CACHE_FILE_PATH}"')
-            with open(Dataset.CACHE_FILE_PATH, "rb") as f:
-                tokens_list = pickle.load(f)
 
             if validate_cache:
-                # Validate that every 500th element matches the cache, to ensure the cache is correct.
-                islice_500 = lambda x: itertools.islice(x, 0, None, 500)
-                subset_dataset = list(islice_500(Dataset.load_dataset_stream(dataset_path)))
-                subset_tokens = list(islice_500(tokens_list))
-                assert len(subset_dataset) == len(subset_tokens)
-                for element, (doc_id, tokens) in zip(subset_dataset, subset_tokens):
-                    assert doc_id == element["document_id"]
-                    assert tokens == list(Preprocessor.to_token_stream(element["content"]))
+                dataset_stream = Dataset.load_dataset_stream(dataset_path)
 
-            return iter(tokens_list)
+            with open(Dataset.CACHE_FILE_PATH, newline="") as f:
+                for i, (doc_id_str, *tokens) in enumerate(csv.reader(f)):
+                    doc_id = int(doc_id_str)
+
+                    if validate_cache:
+                        element = next(dataset_stream)
+                        if i % 500 == 0:
+                            assert doc_id == element["document_id"]
+                            assert tokens == list(Preprocessor.to_token_stream(element["content"]))
+
+                    yield doc_id, tokens
+
+            if validate_cache:
+                # Assert that `dataset_stream` has exhausted.
+                try:
+                    next(dataset_stream)
+                    raise AssertionError('"dataset_stream" iterator not exhausted.')
+                except StopIteration:
+                    pass
+
+            return
 
         for element in tqdm(Dataset.load_dataset_stream(dataset_path), total=Dataset.NUM_DOCUMENTS):
             tokens = list(Preprocessor.to_token_stream(element["content"]))
