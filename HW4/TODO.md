@@ -8,7 +8,9 @@
     - else, run
         ```py
         from dataset import Dataset
-        Dataset.get_tokenized_content_stream("dataset.csv", save_cache=True)
+
+        for tokens in Dataset.get_tokenized_content_stream("dataset.csv", save_cache=True):
+            pass
         ```
 
 
