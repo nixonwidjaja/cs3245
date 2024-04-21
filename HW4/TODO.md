@@ -3,15 +3,19 @@
   ```bash
   bash download_dataset.sh
   ```
-- Precompute the tokens (for local testing) by either:
-    - for multi-processing, run `compute_cache.DONT_SUBMIT.py` and hope u have enough RAM
-    - else, run
-        ```py
-        from dataset import Dataset
+- Get the precomputed tokens (for local testing) by either:
+    - downloading it by running `download_cache.sh` using Bash / Git Bash:
+      ```bash
+      bash download_cache.sh
+      ```
+    - or precompute urself using multi-processing by running `compute_cache.DONT_SUBMIT.py` and hope u have enough RAM
+    - else precompute on a single-process via:
+      ```py
+      from dataset import Dataset
 
-        for tokens in Dataset.get_tokenized_content_stream("dataset.csv", save_cache=True):
-            pass
-        ```
+      for tokens in Dataset.get_tokenized_content_stream("dataset.csv", save_cache=True):
+          pass
+      ```
 
 
 # Things done:
