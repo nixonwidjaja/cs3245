@@ -40,6 +40,7 @@
   - Need a function to efficiently merge postings lists & their positional index. (ie. get the postings where the position index of 2nd term is +1 from the 1st term etc.)
   - Need a way to "loosen" the phrase searching. \
     eg. if "quiet phone call" yields too little results, loosen the query to "quiet" AND "phone call" etc.
+  - Need to make it work with WordNet query-expansion
   - Phrase searching doesn't work with Pseudo Relevance Feedback (PRF), so PRF needs should be removed when redesigning the search to do phrase searching
 
 
