@@ -12,27 +12,24 @@ Give an overview of your program, describe the important algorithms/steps
 in your program, and discuss your experiments in general.  A few paragraphs 
 are usually sufficient.
 
-The main class Dataset is responsible for loading the dataset as a stream of data elements, 
-where each element represents a document with attributes like document ID, title, content, 
-date posted, and court. We've implemented handling for duplicate rows by merging their court 
-strings. Moreover, there's a method for tokenizing the content of each document, and we've 
-included options to cache the tokenized data for improved performance. To preprocess the text 
-data, we've utilized the preprocessor module, and for tracking progress, the code uses the 
-tqdm library.
+Our program is an information retrieval system designed for legal case retrieval and comprises of two components: an indexer and a searcher.
 
-The index is constructed using a term frequency-inverse document frequency (TF-IDF) weighting scheme.
-We load the dataset and tokenize the content of each document using the Dataset class.
-For each document, we calculate TF-IDF weights for each term in the document and store 
-these weights in a document vector, in which we construct an inverted index where each term
-points to a list of (documentId, tf-idf weight) tuples. 
+Given a path to the dataset csv file, we first stream each row of the corpus using dataset.py. We use python's csv.reader file to iterate through each element in the legal corpus, retrieving its document_id, title, content, date_posted and court. Some rows may be duplicated and next to one another (they share the same document id but differ in their court), in this case the court is appended and the row is yielded lazily.
 
-In search.py, we load the input query and relevant document IDs from the query file. Then,
-we initialize the Indexer object with the dictionary and postings file paths. It parses the query
-into tokens using QueryParser. We then create a Scorer object and initializes the query weights, 
-applying pseudo-relevance feedback to adjust weights based on relevant and irrelevant documents.
-Document scores are computed based on the adjusted query weights. We sort the documents 
-by their scores, breaking ties by using document IDs. Finally, we write the sorted list to
-the output file.
+Afterwards, the preprocessor.py tokenizes each legal document's content with 3 preprocessing modes: "stem", "lemma_wo_pos" and "lemma_with_pos". All 3 preprocessing modes employ nltk's sent_tokenize, word_tokenize and differ afterwards. "stem" makes use of PorterStemmer::stem while "lemma_wo_pos" employs nltk.WordNetLemmatizer without part of speech (POS tag) set to noun. "lemma_with_pos" further uses nltk's recommended POS tagger to tag the list of tokens, converts them to WordNet's POS tag before using the nltk.WordNetLemmatizer. Finally, case folding is applied for all preprocessing methods.
+
+We then proceed to construct our inverted index given each document id and its list of tokens as well as the document vectors which contains the pre-computed normalised vector using the L2 norm. We use pickle to store our index in a postings file. We also store the "metadata" for each term and document in our dictionary file to facilitate retrieval of term and doc. The metadata includes the df (length of posting list in inverted index) for terms, starting offset and size for file pointer for both terms and docs.
+
+At querying/searching time, we accept the query and the list of relevant doc ids. We load the entire dictionary and postings file into memory and make use of our QueryParser class to obtain the query tokens.
+
+Our QueryParser class handles the preprocessing of tokens, including the query-expansion technique. The preprocessing defers to our Preprocessor class in preprocessor.py to ensure that the query preprocessing matches with the index preprocessing. Query Expansion is performed using Wordnet's Synset which is an interface representing groups of synonymous words that express the same concept and the WordNet's POS tagged token.
+
+After the list of query tokens (with query expansion) is obtained, they are passed to our Scorer class which calculates the scoring using the tf-idf scoring scheme alongside relevance feedback. The term weights are first initialized, by loading the precomputed normalised df score for each term, while dropping terms that don't appear in any docs. The query weights are computed using logarithm for the tf and idf for the normalised df.
+
+Next, pseudo relevance feedback is optionally performed where the top n documents are assumed to be relevant and the rocchio formula is used to update the query weights.
+
+After the query weights have been confirmed, the document scores are computed using the optimised cosine-scoring algorithm as taught in the lecture. The scores are tie-broken by doc-ID and written to the output file.
+
 
 
 == Files included with this submission ==
