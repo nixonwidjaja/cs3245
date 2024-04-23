@@ -1,10 +1,49 @@
 import pickle
 
+from struct import pack, unpack
+
+def __encode(number):
+    b = []
+    while True:
+        b.insert(0, number % 128)
+        if number < 128:
+            break
+        number = number // 128
+    b[-1] += 128
+    return pack('%dB' % len(b), *b)
+
+
+def gap_encode(numbers) -> list[int]:
+    gaps = [numbers[0]]
+    for i in range(1, len(numbers)):
+        gaps.append(numbers[i] - numbers[i-1])
+    return gaps
+
+
+def vb_encode(numbers):
+    bytes_list = []
+    for number in numbers:
+        bytes_list.append(__encode(number))
+    return b"".join(bytes_list)
+
+
+def vb_decode(bytestream):
+    n = 0
+    numbers = []
+    bytestream = unpack('%dB' % len(bytestream), bytestream)
+    for byte in bytestream:
+        if byte < 128:
+            n = 128 * n + byte
+        else:
+            n = 128 * n + (byte - 128)
+            numbers.append(n)
+            n = 0
+    return numbers
 
 class Indexer:
     """Handles reading the dictionary and postings files."""
 
-    def __init__(self, dict_file_path: str, postings_file_path: str) -> None:
+    def __init__(self, dict_file_path: str, postings_file_path: str, use_compression: bool = False) -> None:
         """
         Args:
             dict_file_path (str): Path to file containing the DF, offset and size for each term, \
@@ -15,6 +54,7 @@ class Indexer:
         self.term_metadata, self.doc_metadata = self._load_data_from_dict_file(dict_file_path)
         self.num_docs: int = len(self.doc_metadata)
         self.doc_ids = list(self.doc_metadata.keys())
+        self.use_compression = use_compression
 
     def __enter__(self) -> "Indexer":
         return self
@@ -59,6 +99,15 @@ class Indexer:
         df, offset, size = self.term_metadata[term]
         self.postings_file_io.seek(offset)
         postings_list = pickle.loads(self.postings_file_io.read(size))
+        if self.use_compression:
+            # We now need to reconstruct the postings_list in the expected format from the gap and vb encoding
+            vb_gaps, doc_weights = postings_list
+            gaps = vb_decode(vb_gaps)
+            pl = [(gaps[0], doc_weights[0])]
+            for i in range(1, len(gaps)):
+                pl.append((pl[i-1][0] + gaps[i], doc_weights[i]))
+            return df, pl
+        
         return df, postings_list
 
     def get_df(self, term: str) -> int:

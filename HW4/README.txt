@@ -85,6 +85,8 @@ Execution time: 1.6s
 3243674   : Rank 3
 2702938   : Rank 8
 
+We also experimented with the usage of gap and variable byte encoding for the posting list, which can be enabled and disabled via a flag in the index.py and search.py scripts. When enabled, the size of the posting.txt reduces from 678MB to 575MB. However, the search time for our queries now also increase as we now need to decode the variable byte encoded doc ids and convert from the gap representation to the actual doc ids. For example, query 1 goes from 4.1s to 5.5s, query 2 goes from 3.6s to 5.4s and query 3 goes from 4.3s to 5.2s. Because our current postings file without compression already satisfies the assignment requirements, we chose not to use index compression techniques in our final submission as the time efficiency of our system would be more important.
+
 == Files included with this submission ==
 
 List the files in your submission here and provide a short 1 line

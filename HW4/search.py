@@ -33,7 +33,7 @@ def run_search(
         query, *relevant_doc_ids = (line.rstrip("\n") for line in f.readlines())
 
     # Compute scores.
-    with Indexer(dict_path, postings_path) as indexer:
+    with Indexer(dict_path, postings_path, use_compression=True) as indexer:
         query_tokens = QueryParser.get_query_tokens(query)
         scorer = Scorer(indexer)
         scorer.init_term_weights(query_tokens)
