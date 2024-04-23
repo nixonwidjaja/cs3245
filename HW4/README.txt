@@ -30,7 +30,60 @@ Next, pseudo relevance feedback is optionally performed where the top n document
 
 After the query weights have been confirmed, the document scores are computed using the optimised cosine-scoring algorithm as taught in the lecture. The scores are tie-broken by doc-ID and written to the output file.
 
+After testing on the sample queries, we opted for query expansion as our only form of query refinement (even though we had implemented pseudo relevance feedback as well). Firstly, we observed that query expansion is essential for this corpus as sample query 1 is  "quiet phone call" but the relevant documents only have "silent telephone" which do not match the query at all. Furthermore, although pseudo relevance feedback did improve our scores marginally, the results were too dependent on the hyperparameters (alpha, beta, gamma, number of docs) which we were unable to tune accordingly due to the lack of a sufficiently large training and validation set.
 
+We also experimented with our three different preprocessing modes on the sample queries.
+
+- Stemming preprocessing (did not use query expansion as stemming is not compatible)
+
+Searching for the query "queries/q1.txt" ...
+Execution time: 1.6s
+6807771   : Rank 4200
+4001247   : Rank 88
+3992148   : Rank 1373
+Searching for the query "queries/q2.txt" ...
+Execution time: 1.7s
+2211154   : Rank 108
+2748529   : Rank 32
+Searching for the query "queries/q3.txt" ...
+Execution time: 1.6s
+4273155   : Rank 7
+3243674   : Rank 3
+2702938   : Rank 8
+
+- Lemmatization + Query Expansion
+
+Searching for the query "queries/q1.txt" ...
+Execution time: 1.6s
+6807771   : Rank 2785
+4001247   : Rank 62
+3992148   : Rank 543
+Searching for the query "queries/q2.txt" ...
+Execution time: 1.6s
+2211154   : Rank 75
+2748529   : Rank 24
+Searching for the query "queries/q3.txt" ...
+Execution time: 1.7s
+4273155   : Rank 5
+3243674   : Rank 3
+2702938   : Rank 9
+
+- Lemmatization + POS tagging + Query Expansion
+
+Searching for the query "queries/q1.txt" ...
+Execution time: 1.6s
+6807771   : Rank 4200
+4001247   : Rank 88
+3992148   : Rank 1373
+Searching for the query "queries/q2.txt" ...
+Execution time: 1.7s
+2211154   : Rank 108
+2748529   : Rank 32
+Searching for the query "queries/q3.txt" ...
+Execution time: 1.6s
+4273155   : Rank 7
+3243674   : Rank 3
+2702938   : Rank 8
 
 == Files included with this submission ==
 
