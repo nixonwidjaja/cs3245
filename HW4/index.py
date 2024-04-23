@@ -4,6 +4,10 @@ import math
 import pickle
 import sys
 import time
+import gzip
+import shutil
+
+from struct import pack, unpack
 
 import nltk
 from dataset import Dataset
@@ -18,27 +22,87 @@ def usage():
         + " -d dictionary-file"
         + " -p postings-file"
     )  # fmt:skip
+    
+    
+def __encode(number):
+    b = []
+    while True:
+        b.insert(0, number % 128)
+        if number < 128:
+            break
+        number = number // 128
+    b[-1] += 128
+    return pack('%dB' % len(b), *b)
+
+
+def gap_encode(numbers) -> list[int]:
+    gaps = [numbers[0]]
+    for i in range(1, len(numbers)):
+        gaps.append(numbers[i] - numbers[i-1])
+    return gaps
+
+
+def vb_encode(numbers):
+    bytes_list = []
+    for number in numbers:
+        bytes_list.append(__encode(number))
+    return b"".join(bytes_list)
+
+
+def vb_decode(bytestream):
+    n = 0
+    numbers = []
+    bytestream = unpack('%dB' % len(bytestream), bytestream)
+    for byte in bytestream:
+        if byte < 128:
+            n = 128 * n + byte
+        else:
+            n = 128 * n + (byte - 128)
+            numbers.append(n)
+            n = 0
+    return numbers
 
 
 def build_index(dataset_path: str, out_dict_path: str, out_postings_path: str) -> None:
     print("indexing...")
     start_time = time.time()
 
-    inverted_index: dict[str, list[tuple[int, list[int]]]] = {}
+    inverted_index: dict[str, dict[int, list[int]]] = {}
 
     for doc_id, tokens in tqdm(
         Dataset.get_tokenized_content_stream(dataset_path), total=Dataset.NUM_DOCUMENTS
     ):
-        pos_indices_dict: dict[str, list[int]] = {}
-        for i, token in enumerate(tokens):
+        # we now need to store the df separately before doing the vbe postings
+        encountered_docs: dict[str, list[int]] = {}
+        # Positional indexing token -> pos id -> posting list
+        pos_indices_dict: dict[str, dict[int, list[int]]] = {}
+        for pos, token in enumerate(tokens):
             if token not in pos_indices_dict:
-                pos_indices_dict[token] = []
-            pos_indices_dict[token].append(i)
+                pos_indices_dict[token] = {}
+                
+            if pos not in pos_indices_dict[token]:
+                pos_indices_dict[token][pos] = []
+
+            pos_indices_dict[token][pos].append(doc_id)
 
         for term, pos_indices in pos_indices_dict.items():
             if term not in inverted_index:
-                inverted_index[term] = []
-            inverted_index[term].append((doc_id, pos_indices))
+                inverted_index[term] = {}
+            if term not in encountered_docs:
+                encountered_docs[term] = []
+            encountered_docs[term].append(doc_id)
+            for pos, postings in pos_indices.items():
+                if pos not in inverted_index[term]:
+                    inverted_index[term][pos] = []
+                for doc in postings:
+                    inverted_index[term][pos].append(doc)
+    
+    # Now do gap and variable byte encoding for each mini-posting list
+    for term, pos_indices in inverted_index.items():
+        for pos, postings in pos_indices.items():
+            gap_postings = gap_encode(postings)
+            vbe_postings = vb_encode(gap_postings)
+            pos_indices[pos] = vbe_postings
 
     term_metadata: dict[str, tuple[int, int, int]] = {}
     doc_metadata: dict[int, tuple[int, int]] = {}
@@ -49,7 +113,7 @@ def build_index(dataset_path: str, out_dict_path: str, out_postings_path: str) -
             end_offset = post_f.tell()
             size = end_offset - start_offset
 
-            df = len(postings_list)
+            df = len(encountered_docs[term])
             term_metadata[term] = (df, start_offset, size)
 
             start_offset = end_offset

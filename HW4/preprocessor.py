@@ -17,7 +17,7 @@ def convert_pos_to_wordnet_pos(pos: str) -> str:
 class Preprocessor:
     """Handles the preprocessing of text/documents."""
 
-    PREPROCESSING_MODE: Literal["stem", "lemma_wo_pos", "lemma_with_pos"] = "lemma_wo_pos"
+    PREPROCESSING_MODE: Literal["stem", "lemma_wo_pos", "lemma_with_pos", "lemma_with_pos_and_position"] = "lemma_with_pos_and_position"
 
     stemmer = nltk.PorterStemmer()
     lemmatizer = nltk.WordNetLemmatizer()
@@ -54,6 +54,13 @@ class Preprocessor:
                     for token, pos in nltk.pos_tag(nltk.word_tokenize(sentence)):
                         wordnet_pos = convert_pos_to_wordnet_pos(pos)
                         yield Preprocessor.lemmatizer.lemmatize(token, wordnet_pos).lower()
+                        
+            case "lemma_with_pos_and_position":
+                for sentence in nltk.sent_tokenize(text):
+                    for i, part in enumerate(nltk.pos_tag(nltk.word_tokenize(sentence))):
+                        token, pos = part
+                        wordnet_pos = convert_pos_to_wordnet_pos(pos)
+                        yield (i, Preprocessor.lemmatizer.lemmatize(token, wordnet_pos).lower())
 
 
 if __name__ == "__main__":
