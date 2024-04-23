@@ -24,24 +24,21 @@ def build_index(dataset_path: str, out_dict_path: str, out_postings_path: str) -
     print("indexing...")
     start_time = time.time()
 
-    inverted_index: dict[str, list[tuple[int, float]]] = {}
-    doc_vectors: dict[int, dict[str, float]] = {}
+    inverted_index: dict[str, list[tuple[int, list[int]]]] = {}
+
     for doc_id, tokens in tqdm(
         Dataset.get_tokenized_content_stream(dataset_path), total=Dataset.NUM_DOCUMENTS
     ):
-        tf_dict = nltk.FreqDist(tokens)
-        norm_len = math.sqrt(sum((1 + math.log10(tf)) ** 2 for tf in tf_dict.values()))
-        vector: dict[str, float] = {}
+        pos_indices_dict: dict[str, list[int]] = {}
+        for i, token in enumerate(tokens):
+            if token not in pos_indices_dict:
+                pos_indices_dict[token] = []
+            pos_indices_dict[token].append(i)
 
-        for term, tf in tf_dict.items():
-            doc_weight = (1 + math.log10(tf)) / norm_len
-            vector[term] = doc_weight
-
-            postings_list = inverted_index.get(term, [])
-            postings_list.append((doc_id, doc_weight))
-            inverted_index[term] = postings_list
-
-        doc_vectors[doc_id] = vector
+        for term, pos_indices in pos_indices_dict.items():
+            if term not in inverted_index:
+                inverted_index[term] = []
+            inverted_index[term].append((doc_id, pos_indices))
 
     term_metadata: dict[str, tuple[int, int, int]] = {}
     doc_metadata: dict[int, tuple[int, int]] = {}
@@ -55,14 +52,6 @@ def build_index(dataset_path: str, out_dict_path: str, out_postings_path: str) -
             df = len(postings_list)
             term_metadata[term] = (df, start_offset, size)
 
-            start_offset = end_offset
-
-        for doc_id, vector in doc_vectors.items():
-            post_f.write(pickle.dumps(vector))
-            end_offset = post_f.tell()
-            size = end_offset - start_offset
-
-            doc_metadata[doc_id] = (start_offset, size)
             start_offset = end_offset
 
     with open(out_dict_path, "wb") as dict_f:

@@ -13,7 +13,7 @@ class Indexer:
         """
         self.postings_file_io = open(postings_file_path, "rb")
         self.term_metadata, self.doc_metadata = self._load_data_from_dict_file(dict_file_path)
-        self.num_docs: int = len(self.doc_metadata)
+        self.num_docs: int = 17137
         self.doc_ids = list(self.doc_metadata.keys())
 
     def __enter__(self) -> "Indexer":
@@ -46,21 +46,6 @@ class Indexer:
             term_metadata, doc_metadata = pickle.load(f)
             return term_metadata, doc_metadata
 
-    def get_term_data(self, term: str) -> tuple[int, list[tuple[int, int]]]:
-        """Returns `(df, postings_list)`, the term's DF (from dictionary file)
-        and postings list (from postings file).
-
-        Returns:
-            tuple[int, list[tuple[int, int]]]: `(df, postings_list)`
-        """
-        if term not in self.term_metadata:
-            return 0, []
-
-        df, offset, size = self.term_metadata[term]
-        self.postings_file_io.seek(offset)
-        postings_list = pickle.loads(self.postings_file_io.read(size))
-        return df, postings_list
-
     def get_df(self, term: str) -> int:
         """Gets a term's DF (from dictionary file)."""
         if term not in self.term_metadata:
@@ -69,9 +54,17 @@ class Indexer:
         df, *_ = self.term_metadata[term]
         return df
 
-    def get_doc_vector(self, doc_id: int) -> dict[str, float]:
-        """Gets a document's weight vector (from postings file)."""
-        offset, size = self.doc_metadata[doc_id]
+    def get_postings_list(self, term: str) -> list[tuple[int, list[int]]]:
+        """Returns `(df, postings_list)`, the term's DF (from dictionary file)
+        and postings list (from postings file).
+
+        Returns:
+            list[tuple[int, list[int]]]: `[(doc_id, positional_indices), ...]`
+        """
+        if term not in self.term_metadata:
+            return []
+
+        df, offset, size = self.term_metadata[term]
         self.postings_file_io.seek(offset)
-        doc_vector = pickle.loads(self.postings_file_io.read(size))
-        return doc_vector
+        postings_list = pickle.loads(self.postings_file_io.read(size))
+        return postings_list
