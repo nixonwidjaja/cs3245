@@ -30,6 +30,7 @@ Next, pseudo relevance feedback is optionally performed where the top n document
 
 After the query weights have been confirmed, the document scores are computed using the optimised cosine-scoring algorithm as taught in the lecture. The scores are tie-broken by doc-ID and written to the output file.
 
+After testing on the sample queries, we opted for query expansion as our only form of query refinement (even though we had implemented pseudo relevance feedback as well). Firstly, we observed that query expansion is essential for this corpus as sample query 1 is  "quiet phone call" but the relevant documents only have "silent telephone" which do not match the query at all. Furthermore, although pseudo relevance feedback did improve our scores marginally, the results were too dependent on the hyperparameters (alpha, beta, gamma, number of docs) which we were unable to tune accordingly due to the lack of a sufficiently large training and validation set.
 
 
 == Files included with this submission ==
