@@ -37,19 +37,19 @@ We also experimented with our three different preprocessing modes on the sample 
 - Stemming preprocessing (did not use query expansion as stemming is not compatible)
 
 Searching for the query "queries/q1.txt" ...
-Execution time: 1.6s
-6807771   : Rank 4200
-4001247   : Rank 88
-3992148   : Rank 1373
+Execution time: 0.2s
+6807771   : Rank 4469
+4001247   : Rank 248
+3992148   : Rank 3791
 Searching for the query "queries/q2.txt" ...
-Execution time: 1.7s
-2211154   : Rank 108
-2748529   : Rank 32
+Execution time: 0.2s
+2211154   : Rank 90
+2748529   : Rank 1
 Searching for the query "queries/q3.txt" ...
-Execution time: 1.6s
-4273155   : Rank 7
-3243674   : Rank 3
-2702938   : Rank 8
+Execution time: 0.3s
+4273155   : Rank 18
+3243674   : Rank 2
+2702938   : Rank 16
 
 - Lemmatization + Query Expansion
 
