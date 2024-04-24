@@ -148,9 +148,7 @@ class Dataset:
         if save_cache:
             with open(Dataset.CACHE_FILE_PATH, "w", newline="", encoding="utf-8") as f:
                 writer = csv.writer(f)
-                for element in tqdm(
-                    Dataset.load_dataset_stream(dataset_path), total=Dataset.NUM_DOCUMENTS
-                ):
+                for element in Dataset.load_dataset_stream(dataset_path):
                     tokens = list(Preprocessor.to_token_stream(element["content"]))
                     yield element["document_id"], tokens
                     writer.writerow(itertools.chain([element["document_id"]], tokens))
