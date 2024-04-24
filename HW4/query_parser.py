@@ -35,16 +35,14 @@ class QueryParser:
             token_set: set[str] = set()
             for token, pos in nltk.pos_tag(nltk.word_tokenize(query)):
                 wordnet_pos = convert_pos_to_wordnet_pos(pos)
-                Preprocessor.lemmatizer.lemmatize(token, wordnet_pos).lower()
-                token_set.add(token)
-                token_set |= QueryParser.get_synonyms(token, wordnet_pos)
+                lemma = Preprocessor.lemmatizer.lemmatize(token, wordnet_pos).lower()
+                token_set |= QueryParser.get_synonyms(lemma, wordnet_pos)
             return list(token_set)
 
         token_set: set[str] = set()
         for token in nltk.word_tokenize(query):
-            Preprocessor.lemmatizer.lemmatize(token).lower()
-            token_set.add(token)
-            token_set |= QueryParser.get_synonyms(token)
+            lemma = Preprocessor.lemmatizer.lemmatize(token).lower()
+            token_set |= QueryParser.get_synonyms(lemma)
 
         if Preprocessor.PREPROCESSING_MODE == "stem":
             return [Preprocessor.stemmer.stem(lemma) for lemma in token_set]
@@ -53,7 +51,7 @@ class QueryParser:
 
     @staticmethod
     def get_synonyms(token: str, wordnet_pos: str | None = wordnet.NOUN) -> set[str]:
-        synonyms: set[str] = set()
+        synonyms: set[str] = set([token])
         for syn in cast(list[Synset], wordnet.synsets(token, wordnet_pos)):
             for lemma in cast(list[str], syn.lemma_names()):
                 synonyms.add(lemma.lower())
