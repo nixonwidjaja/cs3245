@@ -74,35 +74,23 @@ def build_index(dataset_path: str, out_dict_path: str, out_postings_path: str) -
     ):
         # we now need to store the df separately before doing the vbe postings
         encountered_docs: dict[str, list[int]] = {}
-        # Positional indexing token -> pos id -> posting list
+        # Positional indexing token -> doc id -> posting list
         pos_indices_dict: dict[str, dict[int, list[int]]] = {}
         for pos, token in enumerate(tokens):
-            if token not in pos_indices_dict:
-                pos_indices_dict[token] = {}
+            if token not in inverted_index:
+                inverted_index[token] = {}
                 
-            if pos not in pos_indices_dict[token]:
-                pos_indices_dict[token][pos] = []
+            if doc_id not in inverted_index[token]:
+                inverted_index[token][doc_id] = []
 
-            pos_indices_dict[token][pos].append(doc_id)
-
-        for term, pos_indices in pos_indices_dict.items():
-            if term not in inverted_index:
-                inverted_index[term] = {}
-            if term not in encountered_docs:
-                encountered_docs[term] = []
-            encountered_docs[term].append(doc_id)
-            for pos, postings in pos_indices.items():
-                if pos not in inverted_index[term]:
-                    inverted_index[term][pos] = []
-                for doc in postings:
-                    inverted_index[term][pos].append(doc)
+            inverted_index[token][doc_id].append(pos)
     
     # Now do gap and variable byte encoding for each mini-posting list
     for term, pos_indices in inverted_index.items():
-        for pos, postings in pos_indices.items():
-            gap_postings = gap_encode(postings)
+        for doc_id, positions in pos_indices.items():
+            gap_postings = gap_encode(positions)
             vbe_postings = vb_encode(gap_postings)
-            pos_indices[pos] = vbe_postings
+            pos_indices[doc_id] = vbe_postings
 
     term_metadata: dict[str, tuple[int, int, int]] = {}
     doc_metadata: dict[int, tuple[int, int]] = {}
