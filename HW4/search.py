@@ -30,7 +30,7 @@ def run_search(
     start_time = time.time()
 
     # Load the input query/relevant Doc-IDs.
-    with open(queries_path, "r") as f:
+    with open(queries_path, "r", encoding="utf-8") as f:
         query, *relevant_doc_ids = (line.rstrip("\n") for line in f.readlines())
 
     # Compute scores.
@@ -53,7 +53,7 @@ def run_search(
     output_doc_ids = [str(doc_id) for _, doc_id in elements]
 
     # Write results to output file.
-    with open(out_results_path, "w") as f:
+    with open(out_results_path, "w", encoding="utf-8") as f:
         f.write(" ".join(output_doc_ids))
 
     end_time = time.time()

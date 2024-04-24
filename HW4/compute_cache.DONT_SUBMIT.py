@@ -30,7 +30,7 @@ if __name__ == "__main__":
         tokens_list = pool.map(process_element, dataset)
 
     os.makedirs(os.path.dirname(Dataset.CACHE_FILE_PATH), exist_ok=True)
-    with open(Dataset.CACHE_FILE_PATH, "w", newline="") as f:
+    with open(Dataset.CACHE_FILE_PATH, "w", newline="", encoding="utf-8") as f:
         writer = csv.writer(f)
         for doc_id, tokens in tokens_list:
             writer.writerow(itertools.chain([doc_id], tokens))

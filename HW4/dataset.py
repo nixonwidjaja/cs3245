@@ -123,7 +123,7 @@ class Dataset:
             if validate_cache:
                 dataset_stream = Dataset.load_dataset_stream(dataset_path)
 
-            with open(Dataset.CACHE_FILE_PATH, newline="") as f:
+            with open(Dataset.CACHE_FILE_PATH, newline="", encoding="utf-8") as f:
                 for i, (doc_id_str, *tokens) in enumerate(csv.reader(f)):
                     doc_id = int(doc_id_str)
 
@@ -146,7 +146,7 @@ class Dataset:
             return
 
         if save_cache:
-            with open(Dataset.CACHE_FILE_PATH, "w", newline="") as f:
+            with open(Dataset.CACHE_FILE_PATH, "w", newline="", encoding="utf-8") as f:
                 writer = csv.writer(f)
                 for element in tqdm(
                     Dataset.load_dataset_stream(dataset_path), total=Dataset.NUM_DOCUMENTS
