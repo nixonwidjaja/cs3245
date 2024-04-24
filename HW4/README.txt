@@ -87,6 +87,10 @@ Execution time: 1.6s
 
 We also experimented with the usage of gap and variable byte encoding for the posting list, which can be enabled and disabled via a flag in the index.py and search.py scripts. When enabled, the size of the posting.txt reduces from 678MB to 575MB. However, the search time for our queries now also increase as we now need to decode the variable byte encoded doc ids and convert from the gap representation to the actual doc ids. For example, query 1 goes from 4.1s to 5.5s, query 2 goes from 3.6s to 5.4s and query 3 goes from 4.3s to 5.2s. Because our current postings file without compression already satisfies the assignment requirements, we chose not to use index compression techniques in our final submission as the time efficiency of our system would be more important.
 
+We started with a simple model that completely ignored the positional queries and obtained a mean average F2 score of 0.327139583308408 on the leaderboards. Afterwards, we decided to work on implementing the positional indexing.
+
+The first issue we ran into was the size of the positional postings list, which was ~900MB, greatly over the maximum size of the submission folder. We attempted to use the posting list compression techniques but the indexing stalled due to a lack to memory and took forever. As such, we decided to stick with our current implementation and ignore the positional indexing since our submission was sufficiently good (on the leaderboards at least).
+
 == Files included with this submission ==
 
 List the files in your submission here and provide a short 1 line
@@ -98,6 +102,12 @@ and formatted correctly.
 - search.py: process queries and return ranked retrieval search result
 - dictionary.txt: store dictionary mapping of token to file pointer
 - postings.txt: store the posting lists of all tokens
+- preprocessor.py: Text preprocessing class
+- query_parser.py: parses the queries
+- scorer.py: scores the candidate documents according to consine distance
+- indexer.py: class that facilitates access to the dictionary and postings list
+- dataset.py: lazily loads and generates the token stream
+- bonus.docx: our submission for the bonus component
 
 == Allocation work ==
 - Shaun: 
