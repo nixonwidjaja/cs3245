@@ -4,10 +4,10 @@ import math
 import pickle
 import sys
 import time
-from indexer import vb_encode
 
 import nltk
 from dataset import Dataset
+from indexer import vb_encode
 from tqdm.autonotebook import tqdm
 
 
@@ -21,7 +21,12 @@ def usage():
     )  # fmt:skip
 
 
-def build_index(dataset_path: str, out_dict_path: str, out_postings_path: str, use_compression: bool = False) -> None:
+def build_index(
+    dataset_path: str,
+    out_dict_path: str,
+    out_postings_path: str,
+    use_compression: bool = False,
+) -> None:
     print("indexing...")
     start_time = time.time()
 
@@ -43,14 +48,14 @@ def build_index(dataset_path: str, out_dict_path: str, out_postings_path: str, u
             inverted_index[term] = postings_list
 
         doc_vectors[doc_id] = vector
-    if use_compression:    
+    if use_compression:
         # Do gap and variable encoding on the doc id for each posting list
         for term, postings_list in inverted_index.items():
             gaps = [postings_list[0][0]]
             doc_weights = [postings_list[0][1]]
             for i in range(1, len(postings_list)):
                 doc_id, doc_weight = postings_list[i]
-                gaps.append(doc_id - postings_list[i-1][0])
+                gaps.append(doc_id - postings_list[i - 1][0])
                 doc_weights.append(doc_weight)
             vb_gaps = vb_encode(gaps)
             inverted_index[term] = (vb_gaps, doc_weights)
