@@ -103,9 +103,10 @@ class Dataset:
         dataset_path: str,
         save_cache: bool = False,
         validate_cache: bool = True,
-    ) -> Iterator[tuple[int, list[str]]]:
-        """Yields tuples of `(Doc-ID, token_list)`, one for each document, where
-        `token_list` is the tokens of the document's `"content"`.
+    ) -> Iterator[tuple[int, list[str], str]]:
+        """Yields tuples of `(Doc-ID, token_list, court)`, one for each document, where
+        `token_list` is the tokens of the document's `"content"`, `court` is the
+        document's court name.
 
         If a precomputed cache of the tokens list exists, load the cache instead.
 
@@ -120,20 +121,19 @@ class Dataset:
         if os.path.exists(Dataset.CACHE_FILE_PATH):
             print(f'Using cache at "{Dataset.CACHE_FILE_PATH}"')
 
-            if validate_cache:
-                dataset_stream = Dataset.load_dataset_stream(dataset_path)
+            dataset_stream = Dataset.load_dataset_stream(dataset_path)
 
             with open(Dataset.CACHE_FILE_PATH, newline="", encoding="utf-8") as f:
                 for i, (doc_id_str, *tokens) in enumerate(csv.reader(f)):
                     doc_id = int(doc_id_str)
+                    element = next(dataset_stream)
 
                     if validate_cache:
-                        element = next(dataset_stream)
                         if i % 500 == 0:
                             assert doc_id == element["document_id"]
                             assert tokens == list(Preprocessor.to_token_stream(element["content"]))
 
-                    yield doc_id, tokens
+                    yield doc_id, tokens, element["court"]
 
             if validate_cache:
                 # Assert that `dataset_stream` has exhausted.
@@ -150,10 +150,10 @@ class Dataset:
                 writer = csv.writer(f)
                 for element in Dataset.load_dataset_stream(dataset_path):
                     tokens = list(Preprocessor.to_token_stream(element["content"]))
-                    yield element["document_id"], tokens
+                    yield element["document_id"], tokens, element["court"]
                     writer.writerow(itertools.chain([element["document_id"]], tokens))
             return
 
         for element in Dataset.load_dataset_stream(dataset_path):
             tokens = list(Preprocessor.to_token_stream(element["content"]))
-            yield element["document_id"], tokens
+            yield element["document_id"], tokens, element["court"]

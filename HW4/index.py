@@ -21,6 +21,17 @@ def usage():
     )  # fmt:skip
 
 
+MOST_IMPORTANT_COURTS = set(["SG Court of Appeal", "SG Privy Council", "UK House of Lords", "UK Supreme Court", "High Court of Australia", "CA Supreme Court"])  # fmt:skip
+IMPORTANT_COURTS = set(["SG High Court", "Singapore International Commercial Court", "HK High Court", "HK Court of First Instance", "UK Crown Court", "UK Court of Appeal", "UK High Court", "Federal Court of Australia", "NSW Court of Appeal", "NSW Court of Criminal Appeal", "NSW Supreme Court"])  # fmt:skip
+def get_court_weight(court: str) -> float:
+    """Weights depending on how important a court is."""
+    if court in MOST_IMPORTANT_COURTS:
+        return 1.0
+    if court in IMPORTANT_COURTS:
+        return 0.8
+    return 0.6
+
+
 def build_index(
     dataset_path: str,
     out_dict_path: str,
@@ -32,17 +43,25 @@ def build_index(
 
     inverted_index: dict[str, list[tuple[int, float]]] = {}
     doc_vectors: dict[int, dict[str, float]] = {}
-    for doc_id, tokens in tqdm(
+    for doc_id, tokens, court in tqdm(
         Dataset.get_tokenized_content_stream(dataset_path), total=Dataset.NUM_DOCUMENTS
     ):
+        court_weight = get_court_weight(court)
         tf_dict = nltk.FreqDist(tokens)
-        norm_len = math.sqrt(sum((1 + math.log10(tf)) ** 2 for tf in tf_dict.values()))
         vector: dict[str, float] = {}
 
         for term, tf in tf_dict.items():
-            doc_weight = (1 + math.log10(tf)) / norm_len
+            doc_weight = 1 + math.log10(court_weight * tf)
             vector[term] = doc_weight
 
+        norm_len = 0.0
+        for doc_weight in vector.values():
+            norm_len += doc_weight**2
+        norm_len = math.sqrt(norm_len)
+        for term in vector.keys():
+            vector[term] /= norm_len
+
+        for term, doc_weight in vector.items():
             postings_list = inverted_index.get(term, [])
             postings_list.append((doc_id, doc_weight))
             inverted_index[term] = postings_list
