@@ -225,7 +225,7 @@ Execution time: 5.3s
 
 
 
-# Effects of preprocessing
+# Effects of preprocessing on WordNet query expansion
 
 We also experimented with 3 different preprocessing to see how well it worked
 with WordNet query expansion:
