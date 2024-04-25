@@ -46,12 +46,13 @@ def build_index(
     for doc_id, tokens, court in tqdm(
         Dataset.get_tokenized_content_stream(dataset_path), total=Dataset.NUM_DOCUMENTS
     ):
-        court_weight = get_court_weight(court)
+        # court_weight = get_court_weight(court)
         tf_dict = nltk.FreqDist(tokens)
         vector: dict[str, float] = {}
 
         for term, tf in tf_dict.items():
-            doc_weight = 1 + math.log10(court_weight * tf)
+            # doc_weight = 1 + math.log10(court_weight * tf)
+            doc_weight = 1 + math.log10(tf)
             vector[term] = doc_weight
 
         norm_len = 0.0
