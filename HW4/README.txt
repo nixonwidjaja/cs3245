@@ -151,8 +151,10 @@ Leaderboard MAF2: 0.322
 
 # Effects of WordNet query expansion
 
-We observed that WordNet query expansion is essential for this corpus as, for example, sample q1 is "quiet phone call" but the relevant documents only have "silent telephone call" which do not match the query at all. Which lead to abyssmal
-performance for q1:
+We observed that WordNet query expansion is essential for this corpus as, for
+example, sample q1 is "quiet phone call" but the relevant documents only have
+"silent telephone call" which do not match the query at all. Which lead to
+abyssmal performance for q1:
 
 Searching for the query "queries/q1.txt" ...
 6807771   : Rank 3685
@@ -290,18 +292,50 @@ Execution time: 0.3s
 
 # Effects of Gap and Variable Byte Encoding
 
-We also experimented with the usage of gap and variable byte encoding for the posting list, which can be enabled and disabled via a flag in the index.py and search.py scripts. When enabled, the size of the posting.txt reduces from 678MB to 575MB. However, the search time for our queries now also increase as we now need to decode the variable byte encoded doc ids and convert from the gap representation to the actual doc ids.
+We also experimented with the usage of gap and variable byte encoding for the
+posting list, which can be enabled and disabled via a flag in the index.py and
+search.py scripts. When enabled, the size of the posting.txt reduces from 678MB
+to 575MB. However, the search time for our queries now also increase as we now
+need to decode the variable byte encoded doc ids and convert from the gap
+representation to the actual doc ids.
 
 For example, the search time increased from:
 query 1: 4.1s -> 5.5s
 query 2: 3.6s -> 5.4s
 query 3: 4.3s -> 5.2s
 
-Because our current postings file without compression already satisfies the assignment's file size requirement, we chose not to use index compression techniques in our final submission as the time efficiency of our system would be more important.
+Because our current postings file without compression already satisfies the
+assignment's file size requirement, we chose not to use index compression
+techniques in our final submission as the time efficiency of our system would
+be more important.
 
-We started with a simple model that completely ignored the positional queries and obtained a mean average F2 score of 0.327139583308408 on the leaderboards. Afterwards, we decided to work on implementing the positional indexing.
+We started with a simple model that completely ignored the positional queries
+and obtained a mean average F2 score of 0.327139583308408 on the leaderboards.
+Afterwards, we decided to work on implementing the positional indexing.
 
-The first issue we ran into was the size of the positional postings list, which was ~900MB, greatly over the maximum size of the submission folder. We attempted to use the posting list compression techniques but the indexing stalled due to a lack to memory and took forever. Furthermore, our posting list compression technique has less savings for positional indices. This is because we can choose to store our positional postings as a dictionary of terms to another dictionary of positional indexes to the posting list of documents. The same document can now occur multiple times for the same term, furthermore each sub posting list for each positional index is smaller than without, thus we incur less savings using our variable byte encoding. The gap encoding is also not efficient when the gaps are less than 2**30-1 due to how numbers are represented in python. The alternative representation for the positional indexing would be to store the postings as a map from term to a list of tuples which contain doc id and positional id. This is strictly inferior in every aspect: it makes the positional search itself extremely inefficient because we are unable to index their positional differences using the map and are forced to iterate through all possible combinations. Storage is also significantly more expensive as the document id needs to be repeated for each occurrence. As such, we decided to stick with our current implementation and ignore the positional indexing since our submission was sufficiently good (on the leaderboards at least).
+The first issue we ran into was the size of the positional postings list, which
+was ~900MB, greatly over the maximum size of the submission folder. We attempted
+to use the posting list compression techniques but the indexing stalled due to a
+lack to memory and took forever. Furthermore, our posting list compression
+technique has less savings for positional indices. This is because we can choose
+to store our positional postings as a dictionary of terms to another dictionary
+of positional indexes to the posting list of documents. 
+
+The same document can now occur multiple times for the same term, furthermore
+each sub posting list for each positional index is smaller than without, thus
+we incur less savings using our variable byte encoding. The gap encoding is also
+not efficient when the gaps are less than 2**30-1 due to how numbers are
+represented in python.
+
+The alternative representation for the positional indexing would be to store
+the postings as a map from term to a list of tuples which contain doc id and
+positional id. This is strictly inferior in every aspect: it makes the
+positional search itself extremely inefficient because we are unable to index
+their positional differences using the map and are forced to iterate through all
+possible combinations. Storage is also significantly more expensive as the
+document id needs to be repeated for each occurrence. As such, we decided to
+stick with our current implementation and ignore the positional indexing since
+our submission was sufficiently good (on the leaderboards at least).
 
 
 
