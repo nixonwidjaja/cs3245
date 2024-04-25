@@ -53,7 +53,7 @@ class Indexer:
         """
         Args:
             dict_file_path (str): Path to file containing the DF, offset and size for each term, \
-                and all the normalized document lengths.
+                and offset/size for each document vector.
             postings_file_path (str): Path to file containing all the postings lists.
         """
         self.postings_file_io = open(postings_file_path, "rb")
@@ -81,7 +81,7 @@ class Indexer:
         Specifically, it loads:
         - `term_metadata`: DF, offset, size for each term
           (where offset and size are used to seek/read the postings list from the postings file).
-        - `doc_metadata`: Cosine-normalization length, offset, size for each doc-ID
+        - `doc_metadata`: Offset, size for each document vector
           (where offset and size are used to seek/read the doc vector from the postings file).
 
         Returns:
@@ -92,12 +92,12 @@ class Indexer:
             term_metadata, doc_metadata = pickle.load(f)
             return term_metadata, doc_metadata
 
-    def get_term_data(self, term: str) -> tuple[int, list[tuple[int, int]]]:
+    def get_term_data(self, term: str) -> tuple[int, list[tuple[int, float]]]:
         """Returns `(df, postings_list)`, the term's DF (from dictionary file)
         and postings list (from postings file).
 
         Returns:
-            tuple[int, list[tuple[int, int]]]: `(df, postings_list)`
+            tuple[int, list[tuple[int, float]]]: `(df, postings_list)`
         """
         if term not in self.term_metadata:
             return 0, []
